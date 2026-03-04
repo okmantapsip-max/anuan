@@ -17,7 +17,7 @@ local httpRequest = (syn and syn.request) or (http and http.request) or http_req
 -- ============================================================
 -- KEY SYSTEM CONFIG
 -- ============================================================
-local KEY_URL = "https://raw.githubusercontent.com/okmantapsip-max/anuan/main/keys.json"
+local KEY_URL = "https://raw.githubusercontent.com/okmantapsip-max/anuan/main/key.json"
 
 local function CheckKey(key)
     local ok, res = pcall(function()
@@ -73,7 +73,7 @@ Backdrop.Size = UDim2.new(1,0,1,0)
 local Card = Instance.new("Frame", KeyGui)
 Card.BackgroundColor3 = Color3.fromRGB(10, 14, 22)
 Card.BorderSizePixel = 0
-Card.Size = UDim2.new(0, 300, 0, 210)
+Card.Size = UDim2.new(0, 300, 0, 245)
 Card.Position = UDim2.new(0.5,-150,0.5,-105)
 Card.AnchorPoint = Vector2.new(0,0)
 local cardCorner = Instance.new("UICorner", Card); cardCorner.CornerRadius = UDim.new(0,12)
@@ -149,7 +149,7 @@ local ProgressBg = Instance.new("Frame", Card)
 ProgressBg.BackgroundColor3 = Color3.fromRGB(20,25,40)
 ProgressBg.BorderSizePixel = 0
 ProgressBg.Size = UDim2.new(1,-30,0,4)
-ProgressBg.Position = UDim2.new(0,15,0,160)
+ProgressBg.Position = UDim2.new(0,15,0,200)
 ProgressBg.Visible = false
 local pbCorner = Instance.new("UICorner", ProgressBg); pbCorner.CornerRadius = UDim.new(0,2)
 
@@ -163,7 +163,7 @@ local pbFillCorner = Instance.new("UICorner", ProgressBar); pbFillCorner.CornerR
 SubmitBtn.BackgroundColor3 = Color3.fromRGB(30,120,255)
 SubmitBtn.BorderSizePixel = 0
 SubmitBtn.Size = UDim2.new(1,-30,0,36)
-SubmitBtn.Position = UDim2.new(0,15,0,118)
+SubmitBtn.Position = UDim2.new(0,15,0,125)
 SubmitBtn.Font = Enum.Font.GothamBold
 SubmitBtn.Text = "✔ Verifikasi"
 SubmitBtn.TextColor3 = Color3.new(1,1,1)
@@ -174,7 +174,7 @@ local sb_corner = Instance.new("UICorner", SubmitBtn); sb_corner.CornerRadius = 
 local StatusLbl = Instance.new("TextLabel", Card)
 StatusLbl.BackgroundTransparency = 1
 StatusLbl.Size = UDim2.new(1,-20,0,20)
-StatusLbl.Position = UDim2.new(0,10,0,162)
+StatusLbl.Position = UDim2.new(0,10,0,172)
 StatusLbl.Font = Enum.Font.GothamMedium
 StatusLbl.Text = ""
 StatusLbl.TextColor3 = Color3.fromRGB(120,130,155)
