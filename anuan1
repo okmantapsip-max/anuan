@@ -62,52 +62,55 @@ KeyGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 pcall(function() if syn and syn.protect_gui then syn.protect_gui(KeyGui) end end)
 KeyGui.Parent = CoreGui
 
--- Backdrop blur
+-- Backdrop
 local Backdrop = Instance.new("Frame", KeyGui)
 Backdrop.BackgroundColor3 = Color3.fromRGB(5, 8, 15)
-Backdrop.BackgroundTransparency = 0.3
+Backdrop.BackgroundTransparency = 1
 Backdrop.BorderSizePixel = 0
 Backdrop.Size = UDim2.new(1,0,1,0)
+Backdrop.ZIndex = 1
 
 -- Card
 local Card = Instance.new("Frame", KeyGui)
 Card.BackgroundColor3 = Color3.fromRGB(10, 14, 22)
 Card.BorderSizePixel = 0
-Card.Size = UDim2.new(0, 300, 0, 245)
-Card.Position = UDim2.new(0.5,-150,0.5,-105)
-Card.AnchorPoint = Vector2.new(0,0)
+Card.Size = UDim2.new(0, 300, 0, 250)
+Card.AnchorPoint = Vector2.new(0.5, 0.5)
+Card.Position = UDim2.new(0.5, 0, 0.65, 0)
+Card.BackgroundTransparency = 1
+Card.ZIndex = 2
 local cardCorner = Instance.new("UICorner", Card); cardCorner.CornerRadius = UDim.new(0,12)
 local cardStroke = Instance.new("UIStroke", Card)
 cardStroke.Color = Color3.fromRGB(30,120,255); cardStroke.Thickness = 1.5
 
 -- Logo
-local KLogoRow = Instance.new("Frame", Card)
-KLogoRow.BackgroundTransparency = 1
-KLogoRow.Size = UDim2.new(1,0,0,48)
-KLogoRow.Position = UDim2.new(0,0,0,10)
-local KLogo = Instance.new("TextLabel", KLogoRow)
+local KLogo = Instance.new("TextLabel", Card)
 KLogo.BackgroundTransparency = 1
-KLogo.Size = UDim2.new(1,0,0,28)
-KLogo.Position = UDim2.new(0,0,0,0)
+KLogo.Size = UDim2.new(1,0,0,30)
+KLogo.Position = UDim2.new(0,0,0,18)
 KLogo.Font = Enum.Font.GothamBold
 KLogo.Text = "🎣 PAN HOOK"
 KLogo.TextColor3 = Color3.fromRGB(60,140,255)
 KLogo.TextSize = 18
-local KVer = Instance.new("TextLabel", KLogoRow)
+KLogo.ZIndex = 3
+
+local KVer = Instance.new("TextLabel", Card)
 KVer.BackgroundTransparency = 1
 KVer.Size = UDim2.new(1,0,0,16)
-KVer.Position = UDim2.new(0,0,0,28)
+KVer.Position = UDim2.new(0,0,0,50)
 KVer.Font = Enum.Font.Gotham
 KVer.Text = "v2.4 — Masukkan kode pembelian"
 KVer.TextColor3 = Color3.fromRGB(120,130,155)
 KVer.TextSize = 10
+KVer.ZIndex = 3
 
 -- Input box
 local InputBg = Instance.new("Frame", Card)
 InputBg.BackgroundColor3 = Color3.fromRGB(12,16,26)
 InputBg.BorderSizePixel = 0
-InputBg.Size = UDim2.new(1,-30,0,36)
-InputBg.Position = UDim2.new(0,15,0,72)
+InputBg.Size = UDim2.new(1,-30,0,38)
+InputBg.Position = UDim2.new(0,15,0,80)
+InputBg.ZIndex = 3
 local ib_corner = Instance.new("UICorner", InputBg); ib_corner.CornerRadius = UDim.new(0,8)
 local ib_stroke = Instance.new("UIStroke", InputBg)
 ib_stroke.Color = Color3.fromRGB(30,40,65); ib_stroke.Thickness = 1.5
@@ -123,62 +126,59 @@ KeyInput.Text = ""
 KeyInput.TextColor3 = Color3.fromRGB(230,235,245)
 KeyInput.TextSize = 12
 KeyInput.ClearTextOnFocus = false
-KeyInput.Focused:Connect(function()
-    ib_stroke.Color = Color3.fromRGB(30,120,255)
-end)
-KeyInput.FocusLost:Connect(function()
-    ib_stroke.Color = Color3.fromRGB(30,40,65)
-end)
+KeyInput.ZIndex = 4
+KeyInput.Focused:Connect(function() ib_stroke.Color = Color3.fromRGB(30,120,255) end)
+KeyInput.FocusLost:Connect(function() ib_stroke.Color = Color3.fromRGB(30,40,65) end)
 
--- Card entrance animation
-Card.Position = UDim2.new(0.5,-150,0.6,-105)
-Card.BackgroundTransparency = 1
-Backdrop.BackgroundTransparency = 1
-
-task.spawn(function()
-    TweenService:Create(Backdrop, TweenInfo.new(0.3), {BackgroundTransparency=0.3}):Play()
-    task.wait(0.1)
-    TweenService:Create(Card, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Position = UDim2.new(0.5,-150,0.5,-105),
-        BackgroundTransparency = 0
-    }):Play()
-end)
-
--- Progress bar (tersembunyi dulu)
-local ProgressBg = Instance.new("Frame", Card)
-ProgressBg.BackgroundColor3 = Color3.fromRGB(20,25,40)
-ProgressBg.BorderSizePixel = 0
-ProgressBg.Size = UDim2.new(1,-30,0,4)
-ProgressBg.Position = UDim2.new(0,15,0,200)
-ProgressBg.Visible = false
-local pbCorner = Instance.new("UICorner", ProgressBg); pbCorner.CornerRadius = UDim.new(0,2)
-
-local ProgressBar = Instance.new("Frame", ProgressBg)
-ProgressBar.BackgroundColor3 = Color3.fromRGB(30,120,255)
-ProgressBar.BorderSizePixel = 0
-ProgressBar.Size = UDim2.new(0,0,1,0)
-local pbFillCorner = Instance.new("UICorner", ProgressBar); pbFillCorner.CornerRadius = UDim.new(0,2)
-
-
+-- Submit button
+local SubmitBtn = Instance.new("TextButton", Card)
 SubmitBtn.BackgroundColor3 = Color3.fromRGB(30,120,255)
 SubmitBtn.BorderSizePixel = 0
-SubmitBtn.Size = UDim2.new(1,-30,0,36)
-SubmitBtn.Position = UDim2.new(0,15,0,125)
+SubmitBtn.Size = UDim2.new(1,-30,0,38)
+SubmitBtn.Position = UDim2.new(0,15,0,132)
 SubmitBtn.Font = Enum.Font.GothamBold
 SubmitBtn.Text = "✔ Verifikasi"
 SubmitBtn.TextColor3 = Color3.new(1,1,1)
 SubmitBtn.TextSize = 13
+SubmitBtn.ZIndex = 3
 local sb_corner = Instance.new("UICorner", SubmitBtn); sb_corner.CornerRadius = UDim.new(0,8)
 
 -- Status label
 local StatusLbl = Instance.new("TextLabel", Card)
 StatusLbl.BackgroundTransparency = 1
 StatusLbl.Size = UDim2.new(1,-20,0,20)
-StatusLbl.Position = UDim2.new(0,10,0,172)
+StatusLbl.Position = UDim2.new(0,10,0,182)
 StatusLbl.Font = Enum.Font.GothamMedium
 StatusLbl.Text = ""
 StatusLbl.TextColor3 = Color3.fromRGB(120,130,155)
 StatusLbl.TextSize = 11
+StatusLbl.ZIndex = 3
+
+-- Progress bar
+local ProgressBg = Instance.new("Frame", Card)
+ProgressBg.BackgroundColor3 = Color3.fromRGB(20,25,40)
+ProgressBg.BorderSizePixel = 0
+ProgressBg.Size = UDim2.new(1,-30,0,4)
+ProgressBg.Position = UDim2.new(0,15,0,210)
+ProgressBg.Visible = false
+ProgressBg.ZIndex = 3
+local pbCorner = Instance.new("UICorner", ProgressBg); pbCorner.CornerRadius = UDim.new(0,2)
+local ProgressBar = Instance.new("Frame", ProgressBg)
+ProgressBar.BackgroundColor3 = Color3.fromRGB(30,120,255)
+ProgressBar.BorderSizePixel = 0
+ProgressBar.Size = UDim2.new(0,0,1,0)
+ProgressBar.ZIndex = 4
+local pbFillCorner = Instance.new("UICorner", ProgressBar); pbFillCorner.CornerRadius = UDim.new(0,2)
+
+-- Card entrance animation
+task.spawn(function()
+    TweenService:Create(Backdrop, TweenInfo.new(0.3), {BackgroundTransparency=0.35}):Play()
+    task.wait(0.05)
+    TweenService:Create(Card, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Position = UDim2.new(0.5, 0, 0.5, 0),
+        BackgroundTransparency = 0
+    }):Play()
+end)
 
 -- Loading animation dengan progress bar
 local loadingThread = nil
