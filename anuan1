@@ -1,0 +1,1518 @@
+-- ============================================================
+--   PAN HOOK v2.4 | Fish It Webhook + Auto Tool
+--   Konsep: ITG System | by PanMancing01
+--   Update v2.4: Key System (GitHub + Expired by Date)
+-- ============================================================
+
+local HttpService       = game:GetService("HttpService")
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CoreGui           = game:GetService("CoreGui")
+local TweenService      = game:GetService("TweenService")
+local RunService        = game:GetService("RunService")
+local UserInputService  = game:GetService("UserInputService")
+
+local httpRequest = (syn and syn.request) or (http and http.request) or http_request or request
+
+-- ============================================================
+-- KEY SYSTEM CONFIG
+-- ============================================================
+local KEY_URL = "https://raw.githubusercontent.com/okmantapsip-max/anuan/main/keys.json"
+
+local function CheckKey(key)
+    local ok, res = pcall(function()
+        return httpRequest({
+            Url = KEY_URL,
+            Method = "GET",
+            Headers = {["Cache-Control"] = "no-cache"}
+        })
+    end)
+    if not ok or not res or not res.Body then
+        return false, "Gagal konek ke server!"
+    end
+    local parseOk, data = pcall(function()
+        return HttpService:JSONDecode(res.Body)
+    end)
+    if not parseOk or not data or not data.keys then
+        return false, "Format database error!"
+    end
+    local entry = data.keys[key]
+    if not entry then
+        return false, "Kode pembelian tidak ditemukan!"
+    end
+    local expiry = entry.expires
+    if expiry ~= "lifetime" then
+        local y, m, d = expiry:match("(%d+)-(%d+)-(%d+)")
+        if y then
+            local expiryEpoch = os.time({year=tonumber(y),month=tonumber(m),day=tonumber(d),hour=23,min=59,sec=59})
+            if os.time() > expiryEpoch then
+                return false, "Kode sudah expired! ("..expiry..")"
+            end
+        end
+    end
+    return true, entry.owner or "User"
+end
+
+-- ============================================================
+-- KEY INPUT SCREEN
+-- ============================================================
+local KeyGui = Instance.new("ScreenGui")
+KeyGui.Name = "PH_KeyScreen"
+KeyGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+pcall(function() if syn and syn.protect_gui then syn.protect_gui(KeyGui) end end)
+KeyGui.Parent = CoreGui
+
+-- Backdrop blur
+local Backdrop = Instance.new("Frame", KeyGui)
+Backdrop.BackgroundColor3 = Color3.fromRGB(5, 8, 15)
+Backdrop.BackgroundTransparency = 0.3
+Backdrop.BorderSizePixel = 0
+Backdrop.Size = UDim2.new(1,0,1,0)
+
+-- Card
+local Card = Instance.new("Frame", KeyGui)
+Card.BackgroundColor3 = Color3.fromRGB(10, 14, 22)
+Card.BorderSizePixel = 0
+Card.Size = UDim2.new(0, 300, 0, 210)
+Card.Position = UDim2.new(0.5,-150,0.5,-105)
+Card.AnchorPoint = Vector2.new(0,0)
+local cardCorner = Instance.new("UICorner", Card); cardCorner.CornerRadius = UDim.new(0,12)
+local cardStroke = Instance.new("UIStroke", Card)
+cardStroke.Color = Color3.fromRGB(30,120,255); cardStroke.Thickness = 1.5
+
+-- Logo
+local KLogoRow = Instance.new("Frame", Card)
+KLogoRow.BackgroundTransparency = 1
+KLogoRow.Size = UDim2.new(1,0,0,48)
+KLogoRow.Position = UDim2.new(0,0,0,10)
+local KLogo = Instance.new("TextLabel", KLogoRow)
+KLogo.BackgroundTransparency = 1
+KLogo.Size = UDim2.new(1,0,0,28)
+KLogo.Position = UDim2.new(0,0,0,0)
+KLogo.Font = Enum.Font.GothamBold
+KLogo.Text = "🎣 PAN HOOK"
+KLogo.TextColor3 = Color3.fromRGB(60,140,255)
+KLogo.TextSize = 18
+local KVer = Instance.new("TextLabel", KLogoRow)
+KVer.BackgroundTransparency = 1
+KVer.Size = UDim2.new(1,0,0,16)
+KVer.Position = UDim2.new(0,0,0,28)
+KVer.Font = Enum.Font.Gotham
+KVer.Text = "v2.4 — Masukkan kode pembelian"
+KVer.TextColor3 = Color3.fromRGB(120,130,155)
+KVer.TextSize = 10
+
+-- Input box
+local InputBg = Instance.new("Frame", Card)
+InputBg.BackgroundColor3 = Color3.fromRGB(12,16,26)
+InputBg.BorderSizePixel = 0
+InputBg.Size = UDim2.new(1,-30,0,36)
+InputBg.Position = UDim2.new(0,15,0,72)
+local ib_corner = Instance.new("UICorner", InputBg); ib_corner.CornerRadius = UDim.new(0,8)
+local ib_stroke = Instance.new("UIStroke", InputBg)
+ib_stroke.Color = Color3.fromRGB(30,40,65); ib_stroke.Thickness = 1.5
+
+local KeyInput = Instance.new("TextBox", InputBg)
+KeyInput.BackgroundTransparency = 1
+KeyInput.Size = UDim2.new(1,-20,1,0)
+KeyInput.Position = UDim2.new(0,10,0,0)
+KeyInput.Font = Enum.Font.GothamMedium
+KeyInput.PlaceholderText = "PANHOOK-XXXX-XXXX-XXXX"
+KeyInput.PlaceholderColor3 = Color3.fromRGB(60,70,90)
+KeyInput.Text = ""
+KeyInput.TextColor3 = Color3.fromRGB(230,235,245)
+KeyInput.TextSize = 12
+KeyInput.ClearTextOnFocus = false
+KeyInput.Focused:Connect(function()
+    ib_stroke.Color = Color3.fromRGB(30,120,255)
+end)
+KeyInput.FocusLost:Connect(function()
+    ib_stroke.Color = Color3.fromRGB(30,40,65)
+end)
+
+-- Card entrance animation
+Card.Position = UDim2.new(0.5,-150,0.6,-105)
+Card.BackgroundTransparency = 1
+Backdrop.BackgroundTransparency = 1
+
+task.spawn(function()
+    TweenService:Create(Backdrop, TweenInfo.new(0.3), {BackgroundTransparency=0.3}):Play()
+    task.wait(0.1)
+    TweenService:Create(Card, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Position = UDim2.new(0.5,-150,0.5,-105),
+        BackgroundTransparency = 0
+    }):Play()
+end)
+
+-- Progress bar (tersembunyi dulu)
+local ProgressBg = Instance.new("Frame", Card)
+ProgressBg.BackgroundColor3 = Color3.fromRGB(20,25,40)
+ProgressBg.BorderSizePixel = 0
+ProgressBg.Size = UDim2.new(1,-30,0,4)
+ProgressBg.Position = UDim2.new(0,15,0,160)
+ProgressBg.Visible = false
+local pbCorner = Instance.new("UICorner", ProgressBg); pbCorner.CornerRadius = UDim.new(0,2)
+
+local ProgressBar = Instance.new("Frame", ProgressBg)
+ProgressBar.BackgroundColor3 = Color3.fromRGB(30,120,255)
+ProgressBar.BorderSizePixel = 0
+ProgressBar.Size = UDim2.new(0,0,1,0)
+local pbFillCorner = Instance.new("UICorner", ProgressBar); pbFillCorner.CornerRadius = UDim.new(0,2)
+
+
+SubmitBtn.BackgroundColor3 = Color3.fromRGB(30,120,255)
+SubmitBtn.BorderSizePixel = 0
+SubmitBtn.Size = UDim2.new(1,-30,0,36)
+SubmitBtn.Position = UDim2.new(0,15,0,118)
+SubmitBtn.Font = Enum.Font.GothamBold
+SubmitBtn.Text = "✔ Verifikasi"
+SubmitBtn.TextColor3 = Color3.new(1,1,1)
+SubmitBtn.TextSize = 13
+local sb_corner = Instance.new("UICorner", SubmitBtn); sb_corner.CornerRadius = UDim.new(0,8)
+
+-- Status label
+local StatusLbl = Instance.new("TextLabel", Card)
+StatusLbl.BackgroundTransparency = 1
+StatusLbl.Size = UDim2.new(1,-20,0,20)
+StatusLbl.Position = UDim2.new(0,10,0,162)
+StatusLbl.Font = Enum.Font.GothamMedium
+StatusLbl.Text = ""
+StatusLbl.TextColor3 = Color3.fromRGB(120,130,155)
+StatusLbl.TextSize = 11
+
+-- Loading animation dengan progress bar
+local loadingThread = nil
+local progressThread = nil
+local function StartLoading()
+    SubmitBtn.Text = "⏳ Memeriksa..."
+    SubmitBtn.BackgroundColor3 = Color3.fromRGB(20,80,180)
+    SubmitBtn.Active = false
+    StatusLbl.Text = "Menghubungi server..."
+    StatusLbl.TextColor3 = Color3.fromRGB(120,130,155)
+
+    -- Progress bar muncul
+    ProgressBg.Visible = true
+    ProgressBar.Size = UDim2.new(0,0,1,0)
+    ProgressBar.BackgroundColor3 = Color3.fromRGB(30,120,255)
+
+    -- Animasi progress bar fake (0 → 85% selama ~1.5 detik)
+    TweenService:Create(ProgressBar, TweenInfo.new(1.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0.85,0,1,0)
+    }):Play()
+
+    -- Dots animation
+    local dots = 0
+    loadingThread = task.spawn(function()
+        while true do
+            dots = (dots % 3) + 1
+            SubmitBtn.Text = "⏳ Memeriksa"..string.rep(".", dots)
+            task.wait(0.4)
+        end
+    end)
+end
+
+local function StopLoading()
+    if loadingThread then task.cancel(loadingThread); loadingThread = nil end
+    SubmitBtn.Active = true
+end
+
+-- Submit logic
+local function DoVerify()
+    local key = KeyInput.Text:match("^%s*(.-)%s*$")
+    if key == "" then
+        StatusLbl.Text = "⚠️ Masukkan kode dulu!"
+        StatusLbl.TextColor3 = Color3.fromRGB(255,180,40)
+        return
+    end
+
+    StartLoading()
+
+    task.spawn(function()
+        local valid, msg = CheckKey(key)
+        StopLoading()
+
+        if valid then
+            -- Progress bar ke 100% hijau
+            ProgressBar.BackgroundColor3 = Color3.fromRGB(50,200,120)
+            TweenService:Create(ProgressBar, TweenInfo.new(0.3), {Size=UDim2.new(1,0,1,0)}):Play()
+            SubmitBtn.Text = "✅ Valid!"
+            SubmitBtn.BackgroundColor3 = Color3.fromRGB(50,200,120)
+            StatusLbl.Text = "Selamat datang, "..msg.." 👋"
+            StatusLbl.TextColor3 = Color3.fromRGB(50,200,120)
+            if getgenv then getgenv().PH_KeyOwner = msg end
+            task.wait(1.2)
+            -- Fade out
+            TweenService:Create(Card, TweenInfo.new(0.4,Enum.EasingStyle.Quad,Enum.EasingDirection.In), {
+                BackgroundTransparency = 1,
+                Position = UDim2.new(0.5,-150,0.4,-105)
+            }):Play()
+            TweenService:Create(Backdrop, TweenInfo.new(0.4), {BackgroundTransparency=1}):Play()
+            task.wait(0.45)
+            KeyGui:Destroy()
+            _G.PH_KeyPassed = true
+        else
+            -- Progress bar merah lalu hilang
+            ProgressBar.BackgroundColor3 = Color3.fromRGB(235,70,70)
+            TweenService:Create(ProgressBar, TweenInfo.new(0.2), {Size=UDim2.new(1,0,1,0)}):Play()
+            task.wait(0.3)
+            TweenService:Create(ProgressBg, TweenInfo.new(0.3), {BackgroundTransparency=1}):Play()
+            TweenService:Create(ProgressBar, TweenInfo.new(0.3), {BackgroundTransparency=1}):Play()
+            task.wait(0.35)
+            ProgressBg.BackgroundTransparency=0; ProgressBar.BackgroundTransparency=0
+            ProgressBg.Visible = false
+
+            SubmitBtn.Text = "✔ Verifikasi"
+            SubmitBtn.BackgroundColor3 = Color3.fromRGB(30,120,255)
+            StatusLbl.Text = "❌ "..msg
+            StatusLbl.TextColor3 = Color3.fromRGB(235,70,70)
+            -- Shake card
+            local origPos = Card.Position
+            for i = 1,4 do
+                TweenService:Create(Card, TweenInfo.new(0.05), {
+                    Position = UDim2.new(0.5,-150+(i%2==0 and 6 or -6),0.5,-105)
+                }):Play()
+                task.wait(0.06)
+            end
+            TweenService:Create(Card, TweenInfo.new(0.1), {Position=origPos}):Play()
+            cardStroke.Color = Color3.fromRGB(235,70,70)
+            task.wait(1.5)
+            cardStroke.Color = Color3.fromRGB(30,120,255)
+        end
+    end)
+end
+
+SubmitBtn.MouseButton1Click:Connect(DoVerify)
+KeyInput.FocusLost:Connect(function(enterPressed)
+    if enterPressed then DoVerify() end
+end)
+
+-- Tunggu sampai key valid
+repeat task.wait(0.1) until _G.PH_KeyPassed == true
+_G.PH_KeyPassed = nil
+
+local ScriptActive = true
+local Connections = {}
+local ScreenGui
+
+-- ============================================================
+-- CLEANUP
+-- ============================================================
+if getgenv and getgenv().PH_Stop then pcall(getgenv().PH_Stop) end
+
+local function CleanupScript()
+    ScriptActive = false
+    for _, v in pairs(Connections) do pcall(function() v:Disconnect() end) end
+    Connections = {}
+    if ScreenGui then ScreenGui:Destroy() end
+    print("❌ PAN HOOK: Script closed.")
+    if getgenv then getgenv().PH_Stop = nil end
+end
+if getgenv then getgenv().PH_Stop = CleanupScript end
+
+-- ============================================================
+-- THEME
+-- ============================================================
+local Theme = {
+    Background  = Color3.fromRGB(10, 14, 22),
+    Header      = Color3.fromRGB(14, 18, 28),
+    Sidebar     = Color3.fromRGB(8,  12, 20),
+    Content     = Color3.fromRGB(16, 20, 32),
+    Accent      = Color3.fromRGB(30, 120, 255),
+    AccentGlow  = Color3.fromRGB(60, 140, 255),
+    Success     = Color3.fromRGB(50, 200, 120),
+    Error       = Color3.fromRGB(235, 70, 70),
+    Warning     = Color3.fromRGB(255, 180, 40),
+    TextPrimary = Color3.fromRGB(230, 235, 245),
+    TextSecond  = Color3.fromRGB(120, 130, 155),
+    Border      = Color3.fromRGB(30,  40,  65),
+    Input       = Color3.fromRGB(12,  16,  26),
+}
+
+-- ============================================================
+-- STATE
+-- ============================================================
+local Current_Webhook = ""
+
+local Settings = {
+    WeatherEnabled = false,
+    RubyEnabled    = false,
+    HideIdentity   = false,
+}
+
+local ToggleRegistry = {}
+local ShowNotification
+
+-- ============================================================
+-- SECRET FISH DATABASE (with Asset IDs for images)
+-- ============================================================
+local SecretFishData = {
+    ["Crystal Crab"]               = 18335072046,
+    ["Orca"]                       = 18335061483,
+    ["Zombie Shark"]               = 18335056722,
+    ["Zombie Megalodon"]           = 18335056551,
+    ["Dead Zombie Shark"]          = 18335056722,
+    ["Blob Shark"]                 = 18335068212,
+    ["Ghost Shark"]                = 18335059639,
+    ["Skeleton Narwhal"]           = 18335057177,
+    ["Ghost Worm Fish"]            = 18335059511,
+    ["Worm Fish"]                  = 18335057406,
+    ["Megalodon"]                  = 18335063073,
+    ["1x1x1x1 Comet Shark"]       = 18335118712,
+    ["Bloodmoon Whale"]            = 18335067980,
+    ["Lochness Monster"]           = 18335063708,
+    ["Monster Shark"]              = 18335062145,
+    ["Eerie Shark"]                = 18335060416,
+    ["Great Whale"]                = 18335058867,
+    ["Frostborn Shark"]            = 18335059957,
+    ["Armored Shark"]              = 18335068417,
+    ["Scare"]                      = 18335058097,
+    ["Queen Crab"]                 = 18335058252,
+    ["King Crab"]                  = 18335064431,
+    ["Cryoshade Glider"]           = 18335066928,
+    ["Panther Eel"]                = 18335060799,
+    ["Giant Squid"]                = 18335059345,
+    ["Depthseeker Ray"]            = 18335066551,
+    ["Robot Kraken"]               = 18335058448,
+    ["Mosasaur Shark"]             = 18335061981,
+    ["King Jelly"]                 = 18335064243,
+    ["Bone Whale"]                 = 18335067645,
+    ["Elshark Gran Maja"]          = 18335060241,
+    ["Elpirate Gran Maja"]         = 18335060241,
+    ["Ancient Whale"]              = 18335068612,
+    ["Gladiator Shark"]            = 18335059068,
+    ["Ancient Lochness Monster"]   = 18335063708,
+    ["Talon Serpent"]              = 18335057777,
+    ["Hacker Shark"]               = 18335059223,
+    ["ElRetro Gran Maja"]          = 18335060241,
+    ["Strawberry Choc Megalodon"]  = 18335063073,
+    ["Krampus Shark"]              = 18335062145,
+    ["Emerald Winter Whale"]       = 18335058867,
+    ["Winter Frost Shark"]         = 18335059957,
+    ["Icebreaker Whale"]           = 18335067645,
+    ["Leviathan"]                  = 18335063983,
+    ["Pirate Megalodon"]           = 18335063073,
+    ["Viridis Lurker"]             = 18335060799,
+    ["Cursed Kraken"]              = 18335058448,
+    ["Ancient Magma Whale"]        = 18335068612,
+    ["Rainbow Comet Shark"]        = 18335118712,
+    ["Love Nessie"]                = 18335063708,
+    ["Broken Heart Nessie"]        = 18335063708,
+}
+
+-- ============================================================
+-- DATA (Tier info tetap untuk Ruby)
+-- ============================================================
+local tierData = {
+    [6] = {name="Mythic",    emoji="🔴", color=16711680},
+    [7] = {name="SECRET",    emoji="✨", color=65431},
+}
+
+-- Session stats
+local SessionStart = tick()
+local Stats    = {Secret=0, Ruby=0, Total=0}
+local UI_Stats = {}
+
+-- ============================================================
+-- REMOTE HELPER (Weather - robust scan)
+-- ============================================================
+local function GetRemote(name)
+    local packages = ReplicatedStorage:FindFirstChild("Packages")
+    if not packages then return nil end
+    local index = packages:FindFirstChild("_Index")
+    if not index then return nil end
+    for _, pkg in pairs(index:GetChildren()) do
+        if pkg.Name:find("sleitnick_net") then
+            local net = pkg:FindFirstChild("net")
+            if net then return net:FindFirstChild(name) end
+        end
+    end
+    return nil
+end
+
+-- ============================================================
+-- HELPER UI
+-- ============================================================
+local function AddCorner(inst, rad)
+    local c = Instance.new("UICorner", inst)
+    c.CornerRadius = UDim.new(0, rad or 6)
+    return c
+end
+local function AddStroke(inst, color, thick)
+    -- Hapus UIStroke lama dulu biar tidak numpuk
+    local old = inst:FindFirstChildOfClass("UIStroke")
+    if old then old:Destroy() end
+    local s = Instance.new("UIStroke", inst)
+    s.Color = color or Theme.Border
+    s.Thickness = thick or 1
+    s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    return s
+end
+local function AddPad(inst, px)
+    local p = Instance.new("UIPadding", inst)
+    local u = UDim.new(0, px)
+    p.PaddingLeft=u; p.PaddingRight=u; p.PaddingTop=u; p.PaddingBottom=u
+end
+
+-- ============================================================
+-- SCREEN GUI
+-- ============================================================
+local oldGui = CoreGui:FindFirstChild("PanHookV2")
+if oldGui then oldGui:Destroy() end
+
+ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "PanHookV2"
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+pcall(function()
+    if syn and syn.protect_gui then syn.protect_gui(ScreenGui) end
+end)
+if not ScreenGui.Parent then ScreenGui.Parent = CoreGui end
+
+-- ============================================================
+-- NOTIFICATION
+-- ============================================================
+function ShowNotification(msg, isError)
+    if not ScriptActive then return end
+    local f = Instance.new("Frame", ScreenGui)
+    f.BackgroundColor3 = Theme.Background
+    f.BorderSizePixel = 0
+    f.Size = UDim2.new(0,220,0,38)
+    f.Position = UDim2.new(0.5,-110,0.08,0)
+    f.ZIndex = 300
+    AddCorner(f, 8)
+    AddStroke(f, isError and Theme.Error or Theme.Accent, 1.5)
+    local bar = Instance.new("Frame", f)
+    bar.BackgroundColor3 = isError and Theme.Error or Theme.Accent
+    bar.Size = UDim2.new(0,3,1,-10)
+    bar.Position = UDim2.new(0,6,0.5,-(38-10)/2)
+    bar.BorderSizePixel=0
+    AddCorner(bar,2)
+    local lbl = Instance.new("TextLabel", f)
+    lbl.BackgroundTransparency=1
+    lbl.Position=UDim2.new(0,16,0,0)
+    lbl.Size=UDim2.new(1,-22,1,0)
+    lbl.Font=Enum.Font.GothamBold
+    lbl.Text=msg
+    lbl.TextColor3=Theme.TextPrimary
+    lbl.TextSize=12
+    lbl.ZIndex=301
+    lbl.TextXAlignment=Enum.TextXAlignment.Left
+    f.BackgroundTransparency=1; lbl.TextTransparency=1; bar.BackgroundTransparency=1
+    TweenService:Create(f,TweenInfo.new(0.25,Enum.EasingStyle.Quad),{BackgroundTransparency=0.05}):Play()
+    TweenService:Create(lbl,TweenInfo.new(0.25),{TextTransparency=0}):Play()
+    TweenService:Create(bar,TweenInfo.new(0.25),{BackgroundTransparency=0}):Play()
+    TweenService:Create(f,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.Out),
+        {Position=UDim2.new(0.5,-110,0.12,0)}):Play()
+    task.delay(2.5, function()
+        if not f or not f.Parent then return end
+        TweenService:Create(f,TweenInfo.new(0.25),{BackgroundTransparency=1,Position=UDim2.new(0.5,-110,0.08,0)}):Play()
+        TweenService:Create(lbl,TweenInfo.new(0.25),{TextTransparency=1}):Play()
+        task.wait(0.3); if f and f.Parent then f:Destroy() end
+    end)
+end
+
+-- ============================================================
+-- MAIN FRAME
+-- ============================================================
+local Main = Instance.new("Frame", ScreenGui)
+Main.Name = "Main"
+Main.BackgroundColor3 = Theme.Background
+Main.BorderSizePixel = 0
+Main.Size = UDim2.new(0,500,0,310)
+Main.Position = UDim2.new(0.5,-250,0.5,-155)
+Main.Active = true
+Main.Draggable = true
+AddCorner(Main, 10)
+AddStroke(Main, Theme.Border, 1)
+
+local Shadow = Instance.new("ImageLabel", Main)
+Shadow.BackgroundTransparency=1
+Shadow.AnchorPoint=Vector2.new(0.5,0.5)
+Shadow.Position=UDim2.new(0.5,0,0.5,0)
+Shadow.Size=UDim2.new(1,60,1,60)
+Shadow.ZIndex=-1
+Shadow.Image="rbxassetid://6014261993"
+Shadow.ImageColor3=Color3.new(0,0,0)
+Shadow.ImageTransparency=0.45
+Shadow.SliceCenter=Rect.new(49,49,450,450)
+Shadow.ScaleType=Enum.ScaleType.Slice
+
+-- ============================================================
+-- HEADER
+-- ============================================================
+local Header = Instance.new("Frame", Main)
+Header.BackgroundColor3=Theme.Header
+Header.Size=UDim2.new(1,0,0,34)
+Header.BorderSizePixel=0
+Header.ZIndex=5
+AddCorner(Header,10)
+local HFix=Instance.new("Frame",Header)
+HFix.BackgroundColor3=Theme.Header; HFix.BorderSizePixel=0
+HFix.Position=UDim2.new(0,0,1,-8); HFix.Size=UDim2.new(1,0,0,8)
+local HDivider=Instance.new("Frame",Header)
+HDivider.BackgroundColor3=Theme.Border; HDivider.BorderSizePixel=0
+HDivider.Position=UDim2.new(0,0,1,0); HDivider.Size=UDim2.new(1,0,0,1); HDivider.ZIndex=6
+
+local LogoLabel=Instance.new("TextLabel",Header)
+LogoLabel.BackgroundTransparency=1
+LogoLabel.Position=UDim2.new(0,14,0,0)
+LogoLabel.Size=UDim2.new(0,160,1,0)
+LogoLabel.Font=Enum.Font.GothamBold
+LogoLabel.Text="🎣 PAN HOOK"
+LogoLabel.TextColor3=Theme.AccentGlow
+LogoLabel.TextSize=14
+LogoLabel.TextXAlignment=Enum.TextXAlignment.Left
+LogoLabel.ZIndex=6
+
+local VerLabel=Instance.new("TextLabel",Header)
+VerLabel.BackgroundTransparency=1
+VerLabel.Position=UDim2.new(0,100,0,0)
+VerLabel.Size=UDim2.new(0,60,1,0)
+VerLabel.Font=Enum.Font.Gotham
+VerLabel.Text="v2.4"
+VerLabel.TextColor3=Theme.TextSecond
+VerLabel.TextSize=10
+VerLabel.TextXAlignment=Enum.TextXAlignment.Left
+VerLabel.ZIndex=6
+
+local MinBtn=Instance.new("TextButton",Header)
+MinBtn.BackgroundTransparency=1
+MinBtn.Position=UDim2.new(1,-58,0,0)
+MinBtn.Size=UDim2.new(0,28,1,0)
+MinBtn.Font=Enum.Font.GothamBold
+MinBtn.Text="−"
+MinBtn.TextColor3=Theme.TextSecond
+MinBtn.TextSize=20
+MinBtn.ZIndex=6
+MinBtn.MouseEnter:Connect(function() MinBtn.TextColor3=Theme.TextPrimary end)
+MinBtn.MouseLeave:Connect(function() MinBtn.TextColor3=Theme.TextSecond end)
+
+local CloseBtn=Instance.new("TextButton",Header)
+CloseBtn.BackgroundTransparency=1
+CloseBtn.Position=UDim2.new(1,-28,0,0)
+CloseBtn.Size=UDim2.new(0,28,1,0)
+CloseBtn.Font=Enum.Font.GothamBold
+CloseBtn.Text="×"
+CloseBtn.TextColor3=Theme.TextSecond
+CloseBtn.TextSize=22
+CloseBtn.ZIndex=6
+CloseBtn.MouseEnter:Connect(function() CloseBtn.TextColor3=Theme.Error end)
+CloseBtn.MouseLeave:Connect(function() CloseBtn.TextColor3=Theme.TextSecond end)
+CloseBtn.MouseButton1Click:Connect(function() CleanupScript() end)
+MinBtn.MouseButton1Click:Connect(function() Main.Visible=false end)
+
+-- ============================================================
+-- SIDEBAR
+-- ============================================================
+local Sidebar=Instance.new("Frame",Main)
+Sidebar.BackgroundColor3=Theme.Sidebar
+Sidebar.BorderSizePixel=0
+Sidebar.Position=UDim2.new(0,0,0,34)
+Sidebar.Size=UDim2.new(0,105,1,-34)
+Sidebar.ZIndex=2
+AddCorner(Sidebar,10)
+local SFix=Instance.new("Frame",Sidebar)
+SFix.BackgroundColor3=Theme.Sidebar; SFix.BorderSizePixel=0
+SFix.Position=UDim2.new(1,-8,0,0); SFix.Size=UDim2.new(0,8,1,0)
+local SDivider=Instance.new("Frame",Sidebar)
+SDivider.BackgroundColor3=Theme.Border; SDivider.BorderSizePixel=0
+SDivider.Position=UDim2.new(1,-1,0,0); SDivider.Size=UDim2.new(0,1,1,0); SDivider.ZIndex=3
+
+local MenuContainer=Instance.new("Frame",Sidebar)
+MenuContainer.BackgroundTransparency=1
+MenuContainer.Size=UDim2.new(1,0,1,-10)
+MenuContainer.Position=UDim2.new(0,0,0,5)
+MenuContainer.ZIndex=5
+local mcLayout=Instance.new("UIListLayout",MenuContainer)
+mcLayout.Padding=UDim.new(0,2)
+mcLayout.HorizontalAlignment=Enum.HorizontalAlignment.Center
+AddPad(MenuContainer,5)
+
+-- ============================================================
+-- CONTENT AREA
+-- ============================================================
+local ContentArea=Instance.new("Frame",Main)
+ContentArea.BackgroundTransparency=1
+ContentArea.Position=UDim2.new(0,112,0,38)
+ContentArea.Size=UDim2.new(1,-118,1,-44)
+ContentArea.ZIndex=3
+
+-- ============================================================
+-- PAGE FACTORY
+-- ============================================================
+local pages={}
+local function CreatePage(name)
+    local p=Instance.new("ScrollingFrame",ContentArea)
+    p.Name="Page_"..name
+    p.BackgroundTransparency=1
+    p.Size=UDim2.new(1,0,1,0)
+    p.ScrollBarThickness=3
+    p.ScrollBarImageColor3=Theme.Accent
+    p.Visible=false
+    p.CanvasSize=UDim2.new(0,0,0,0)
+    p.AutomaticCanvasSize=Enum.AutomaticSize.Y
+    p.ZIndex=4
+    local lay=Instance.new("UIListLayout",p)
+    lay.Padding=UDim.new(0,5)
+    lay.SortOrder=Enum.SortOrder.LayoutOrder
+    AddPad(p,2)
+    pages[name]=p
+    return p
+end
+
+local Page_Info    = CreatePage("Info")
+local Page_Webhook = CreatePage("Webhook")
+local Page_Fishing = CreatePage("Fishing")
+local Page_Weather = CreatePage("Weather")
+local Page_Misc    = CreatePage("Misc")
+
+-- ============================================================
+-- TAB FACTORY
+-- ============================================================
+local function CreateTab(label, page, isDefault)
+    local btn=Instance.new("TextButton",MenuContainer)
+    btn.BackgroundColor3=Theme.Content
+    btn.BackgroundTransparency=1
+    btn.Size=UDim2.new(1,-8,0,28)
+    btn.Font=Enum.Font.GothamMedium
+    btn.Text=label
+    btn.TextColor3=Theme.TextSecond
+    btn.TextSize=11
+    btn.ZIndex=3
+    AddCorner(btn,5)
+    local indicator=Instance.new("Frame",btn)
+    indicator.Name="Ind"
+    indicator.BackgroundColor3=Theme.Accent
+    indicator.BorderSizePixel=0
+    indicator.Position=UDim2.new(0,2,0.5,-8)
+    indicator.Size=UDim2.new(0,3,0,16)
+    indicator.Visible=false
+    AddCorner(indicator,2)
+    btn.MouseButton1Click:Connect(function()
+        for _,pg in pairs(pages) do pg.Visible=false end
+        page.Visible=true
+        for _,child in pairs(MenuContainer:GetChildren()) do
+            if child:IsA("TextButton") then
+                child.TextColor3=Theme.TextSecond
+                child.Font=Enum.Font.GothamMedium
+                child.BackgroundTransparency=1
+                local ind=child:FindFirstChild("Ind")
+                if ind then ind.Visible=false end
+            end
+        end
+        btn.TextColor3=Theme.TextPrimary
+        btn.Font=Enum.Font.GothamBold
+        btn.BackgroundTransparency=0.92
+        btn.BackgroundColor3=Theme.TextPrimary
+        indicator.Visible=true
+    end)
+    if isDefault then
+        btn.TextColor3=Theme.TextPrimary
+        btn.Font=Enum.Font.GothamBold
+        btn.BackgroundTransparency=0.92
+        btn.BackgroundColor3=Theme.TextPrimary
+        indicator.Visible=true
+        page.Visible=true
+    end
+    return btn
+end
+
+CreateTab("📊 Info",    Page_Info,    true)
+CreateTab("🔔 Webhook", Page_Webhook)
+CreateTab("🎣 Fishing", Page_Fishing)
+CreateTab("🌦️ Weather", Page_Weather)
+CreateTab("⚙️ Misc",   Page_Misc)
+
+-- ============================================================
+-- UI COMPONENTS
+-- ============================================================
+
+local function CreateSectionLabel(parent, text)
+    local lbl=Instance.new("TextLabel",parent)
+    lbl.BackgroundTransparency=1
+    lbl.Size=UDim2.new(1,-4,0,18)
+    lbl.Font=Enum.Font.GothamBold
+    lbl.Text=text
+    lbl.TextColor3=Theme.TextSecond
+    lbl.TextSize=10
+    lbl.TextXAlignment=Enum.TextXAlignment.Left
+    return lbl
+end
+
+local function CreateToggle(parent, labelText, settingKey, defaultVal, callback)
+    local Frame=Instance.new("Frame",parent)
+    Frame.BackgroundColor3=Theme.Content
+    Frame.Size=UDim2.new(1,-4,0,34)
+    Frame.BorderSizePixel=0
+    AddCorner(Frame,6)
+    AddStroke(Frame,Theme.Border,1)
+    local Lbl=Instance.new("TextLabel",Frame)
+    Lbl.BackgroundTransparency=1
+    Lbl.Position=UDim2.new(0,10,0,0)
+    Lbl.Size=UDim2.new(1,-60,1,0)
+    Lbl.Font=Enum.Font.GothamBold
+    Lbl.Text=labelText
+    Lbl.TextColor3=Theme.TextPrimary
+    Lbl.TextSize=12
+    Lbl.TextXAlignment=Enum.TextXAlignment.Left
+    local state=(Settings[settingKey]~=nil) and Settings[settingKey] or (defaultVal or false)
+    local Switch=Instance.new("TextButton",Frame)
+    Switch.BackgroundColor3=state and Theme.Success or Theme.Input
+    Switch.Position=UDim2.new(1,-46,0.5,-10)
+    Switch.Size=UDim2.new(0,36,0,20)
+    Switch.Text=""
+    Switch.BorderSizePixel=0
+    AddCorner(Switch,10)
+    local Knob=Instance.new("Frame",Switch)
+    Knob.BackgroundColor3=Color3.new(1,1,1)
+    Knob.BorderSizePixel=0
+    Knob.Position=state and UDim2.new(1,-18,0.5,-8) or UDim2.new(0,2,0.5,-8)
+    Knob.Size=UDim2.new(0,16,0,16)
+    AddCorner(Knob,8)
+    local function UpdateUI(val)
+        TweenService:Create(Switch,TweenInfo.new(0.18),{BackgroundColor3=val and Theme.Success or Theme.Input}):Play()
+        TweenService:Create(Knob,TweenInfo.new(0.18),{Position=val and UDim2.new(1,-18,0.5,-8) or UDim2.new(0,2,0.5,-8)}):Play()
+    end
+    if settingKey then
+        ToggleRegistry[settingKey]=function(val)
+            if settingKey then Settings[settingKey]=val end
+            UpdateUI(val)
+            if callback then callback(val) end
+        end
+    end
+    Switch.MouseButton1Click:Connect(function()
+        local newVal=not(Switch.BackgroundColor3==Theme.Success)
+        if settingKey then Settings[settingKey]=newVal end
+        UpdateUI(newVal)
+        if callback then callback(newVal) end
+        ShowNotification(labelText..(newVal and " ✅ ON" or " ⛔ OFF"),not newVal)
+    end)
+    return Frame
+end
+
+local function CreateInput(parent, labelText, placeholder, defaultVal, callback)
+    local Frame=Instance.new("Frame",parent)
+    Frame.BackgroundColor3=Theme.Content
+    Frame.Size=UDim2.new(1,-4,0,34)
+    Frame.BorderSizePixel=0
+    AddCorner(Frame,6)
+    AddStroke(Frame,Theme.Border,1)
+    local Lbl=Instance.new("TextLabel",Frame)
+    Lbl.BackgroundTransparency=1
+    Lbl.Position=UDim2.new(0,10,0,0)
+    Lbl.Size=UDim2.new(0,110,1,0)
+    Lbl.Font=Enum.Font.GothamBold
+    Lbl.Text=labelText
+    Lbl.TextColor3=Theme.TextSecond
+    Lbl.TextSize=11
+    Lbl.TextXAlignment=Enum.TextXAlignment.Left
+    local InputBg=Instance.new("Frame",Frame)
+    InputBg.BackgroundColor3=Theme.Input
+    InputBg.Position=UDim2.new(0,118,0.5,-10)
+    InputBg.Size=UDim2.new(1,-128,0,20)
+    InputBg.ClipsDescendants=true
+    InputBg.BorderSizePixel=0
+    AddCorner(InputBg,4)
+    AddStroke(InputBg,Theme.Border,1)
+    local TB=Instance.new("TextBox",InputBg)
+    TB.BackgroundTransparency=1
+    TB.Position=UDim2.new(0,6,0,0)
+    TB.Size=UDim2.new(1,-12,1,0)
+    TB.Font=Enum.Font.Gotham
+    TB.Text=defaultVal or ""
+    TB.PlaceholderText=placeholder or ""
+    TB.PlaceholderColor3=Theme.TextSecond
+    TB.TextColor3=Theme.TextPrimary
+    TB.TextSize=11
+    TB.TextXAlignment=Enum.TextXAlignment.Left
+    TB.ClearTextOnFocus=false
+    TB.Focused:Connect(function() AddStroke(InputBg,Theme.Accent,1.5) end)
+    TB.FocusLost:Connect(function() AddStroke(InputBg,Theme.Border,1); if callback then callback(TB.Text,TB) end end)
+    return TB
+end
+
+local function CreateButton(parent, labelText, color, callback)
+    local Wrap=Instance.new("Frame",parent)
+    Wrap.BackgroundTransparency=1
+    Wrap.Size=UDim2.new(1,-4,0,30)
+    Wrap.BorderSizePixel=0
+    local Btn=Instance.new("TextButton",Wrap)
+    Btn.BackgroundColor3=color or Theme.Accent
+    Btn.Size=UDim2.new(1,0,1,0)
+    Btn.Font=Enum.Font.GothamBold
+    Btn.Text=labelText
+    Btn.TextColor3=Color3.new(1,1,1)
+    Btn.TextSize=12
+    Btn.BorderSizePixel=0
+    AddCorner(Btn,6)
+    Btn.MouseButton1Click:Connect(callback)
+    return Btn
+end
+
+local function CreateStatRow(parent, labelText, key)
+    local Frame=Instance.new("Frame",parent)
+    Frame.BackgroundColor3=Theme.Content
+    Frame.Size=UDim2.new(1,-4,0,26)
+    Frame.BorderSizePixel=0
+    AddCorner(Frame,5)
+    local Lbl=Instance.new("TextLabel",Frame)
+    Lbl.BackgroundTransparency=1
+    Lbl.Position=UDim2.new(0,10,0,0)
+    Lbl.Size=UDim2.new(0.65,0,1,0)
+    Lbl.Font=Enum.Font.GothamMedium
+    Lbl.Text=labelText
+    Lbl.TextColor3=Theme.TextSecond
+    Lbl.TextSize=11
+    Lbl.TextXAlignment=Enum.TextXAlignment.Left
+    local Val=Instance.new("TextLabel",Frame)
+    Val.BackgroundTransparency=1
+    Val.Position=UDim2.new(0.65,0,0,0)
+    Val.Size=UDim2.new(0.35,-8,1,0)
+    Val.Font=Enum.Font.GothamBold
+    Val.Text="0"
+    Val.TextColor3=Theme.AccentGlow
+    Val.TextSize=11
+    Val.TextXAlignment=Enum.TextXAlignment.Right
+    UI_Stats[key]=Val
+end
+
+-- ============================================================
+-- MULTI-SELECT DROPDOWN (floating)
+-- ============================================================
+local function CreateMultiDropdown(parent, labelText, itemList, selectedItems, onChanged)
+    local Frame=Instance.new("Frame",parent)
+    Frame.BackgroundColor3=Theme.Content
+    Frame.Size=UDim2.new(1,-4,0,34)
+    Frame.BorderSizePixel=0
+    AddCorner(Frame,6)
+    AddStroke(Frame,Theme.Border,1)
+
+    local Lbl=Instance.new("TextLabel",Frame)
+    Lbl.BackgroundTransparency=1
+    Lbl.Position=UDim2.new(0,10,0,0)
+    Lbl.Size=UDim2.new(0,100,1,0)
+    Lbl.Font=Enum.Font.GothamBold
+    Lbl.Text=labelText
+    Lbl.TextColor3=Theme.TextSecond
+    Lbl.TextSize=11
+    Lbl.TextXAlignment=Enum.TextXAlignment.Left
+
+    local function countSelected()
+        local n=0
+        for _,v in pairs(selectedItems) do if v then n=n+1 end end
+        return n
+    end
+
+    local DropBtn=Instance.new("TextButton",Frame)
+    DropBtn.BackgroundColor3=Theme.Input
+    DropBtn.Position=UDim2.new(0,110,0.5,-10)
+    DropBtn.Size=UDim2.new(1,-120,0,20)
+    DropBtn.Font=Enum.Font.GothamMedium
+    DropBtn.Text=countSelected().."/"..#itemList.." selected ▾"
+    DropBtn.TextColor3=Theme.TextPrimary
+    DropBtn.TextSize=10
+    DropBtn.BorderSizePixel=0
+    AddCorner(DropBtn,4)
+    AddStroke(DropBtn,Theme.Border,1)
+
+    local function RefreshBtn()
+        DropBtn.Text=countSelected().."/"..#itemList.." selected ▾"
+    end
+
+    DropBtn.MouseButton1Click:Connect(function()
+        local existing=Main:FindFirstChild("PH_DD_"..labelText)
+        if existing then existing:Destroy(); return end
+
+        local absPos=DropBtn.AbsolutePosition
+        local mainPos=Main.AbsolutePosition
+        local relX=absPos.X-mainPos.X
+        local relY=absPos.Y-mainPos.Y+22
+        local listH=math.min(#itemList*24+30,190)
+
+        local Float=Instance.new("Frame",Main)
+        Float.Name="PH_DD_"..labelText
+        Float.BackgroundColor3=Theme.Header
+        Float.BorderSizePixel=0
+        Float.Size=UDim2.new(0,185,0,listH)
+        Float.Position=UDim2.new(0,relX,0,relY)
+        Float.ZIndex=200
+        Float.ClipsDescendants=true
+        AddCorner(Float,6)
+        AddStroke(Float,Theme.Accent,1.5)
+
+        local Scroll=Instance.new("ScrollingFrame",Float)
+        Scroll.BackgroundTransparency=1
+        Scroll.Size=UDim2.new(1,0,1,-26)
+        Scroll.Position=UDim2.new(0,0,0,0)
+        Scroll.ScrollBarThickness=3
+        Scroll.ScrollBarImageColor3=Theme.Accent
+        Scroll.CanvasSize=UDim2.new(0,0,0,0)
+        Scroll.AutomaticCanvasSize=Enum.AutomaticSize.Y
+        Scroll.ZIndex=201
+        AddPad(Scroll,3)
+        local slay=Instance.new("UIListLayout",Scroll)
+        slay.Padding=UDim.new(0,2)
+
+        for _,name in ipairs(itemList) do
+            local on=selectedItems[name]
+            local row=Instance.new("TextButton",Scroll)
+            row.BackgroundColor3=on and Theme.Accent or Theme.Input
+            row.BackgroundTransparency=on and 0.6 or 0.1
+            row.Size=UDim2.new(1,0,0,22)
+            row.BorderSizePixel=0
+            row.Font=Enum.Font.GothamMedium
+            row.Text=(on and "✓ " or "  ")..name
+            row.TextColor3=Theme.TextPrimary
+            row.TextSize=10
+            row.TextXAlignment=Enum.TextXAlignment.Left
+            row.ZIndex=202
+            AddCorner(row,4)
+            row.MouseButton1Click:Connect(function()
+                selectedItems[name]=not selectedItems[name]
+                local nowOn=selectedItems[name]
+                row.Text=(nowOn and "✓ " or "  ")..name
+                TweenService:Create(row,TweenInfo.new(0.12),{
+                    BackgroundColor3=nowOn and Theme.Accent or Theme.Input,
+                    BackgroundTransparency=nowOn and 0.6 or 0.1
+                }):Play()
+                RefreshBtn()
+                if onChanged then onChanged(selectedItems) end
+            end)
+        end
+
+        local CloseF=Instance.new("TextButton",Float)
+        CloseF.BackgroundColor3=Theme.Border
+        CloseF.BackgroundTransparency=0.3
+        CloseF.Position=UDim2.new(0,0,1,-26)
+        CloseF.Size=UDim2.new(1,0,0,26)
+        CloseF.Font=Enum.Font.GothamBold
+        CloseF.Text="Tutup"
+        CloseF.TextColor3=Theme.TextSecond
+        CloseF.TextSize=10
+        CloseF.ZIndex=202
+        CloseF.MouseButton1Click:Connect(function() Float:Destroy() end)
+    end)
+
+    return Frame, RefreshBtn
+end
+
+-- ============================================================
+-- PAGE: INFO
+-- ============================================================
+CreateSectionLabel(Page_Info,"  SESSION")
+
+-- Key owner row
+local keyRow=Instance.new("Frame",Page_Info)
+keyRow.BackgroundColor3=Theme.Content
+keyRow.Size=UDim2.new(1,-4,0,26)
+keyRow.BorderSizePixel=0
+AddCorner(keyRow,5)
+AddStroke(keyRow,Theme.Border,1)
+local keyLbl=Instance.new("TextLabel",keyRow)
+keyLbl.BackgroundTransparency=1
+keyLbl.Position=UDim2.new(0,10,0,0)
+keyLbl.Size=UDim2.new(0.5,0,1,0)
+keyLbl.Font=Enum.Font.GothamBold
+keyLbl.Text="🔑 Key Owner"
+keyLbl.TextColor3=Theme.TextSecond
+keyLbl.TextSize=11
+keyLbl.TextXAlignment=Enum.TextXAlignment.Left
+local keyVal=Instance.new("TextLabel",keyRow)
+keyVal.BackgroundTransparency=1
+keyVal.Position=UDim2.new(0.5,0,0,0)
+keyVal.Size=UDim2.new(0.5,-8,1,0)
+keyVal.Font=Enum.Font.GothamBold
+keyVal.Text=(getgenv and getgenv().PH_KeyOwner) or "Unknown"
+keyVal.TextColor3=Theme.Success
+keyVal.TextSize=11
+keyVal.TextXAlignment=Enum.TextXAlignment.Right
+
+local UptimeRow=Instance.new("Frame",Page_Info)
+UptimeRow.BackgroundColor3=Theme.Content
+UptimeRow.Size=UDim2.new(1,-4,0,36)
+UptimeRow.BorderSizePixel=0
+AddCorner(UptimeRow,6)
+local UptimeLbl=Instance.new("TextLabel",UptimeRow)
+UptimeLbl.BackgroundTransparency=1
+UptimeLbl.Position=UDim2.new(0,10,0,0)
+UptimeLbl.Size=UDim2.new(0.5,0,1,0)
+UptimeLbl.Font=Enum.Font.GothamBold
+UptimeLbl.Text="⏱ Uptime"
+UptimeLbl.TextColor3=Theme.TextSecond
+UptimeLbl.TextSize=12
+UptimeLbl.TextXAlignment=Enum.TextXAlignment.Left
+local UptimeVal=Instance.new("TextLabel",UptimeRow)
+UptimeVal.BackgroundTransparency=1
+UptimeVal.Position=UDim2.new(0.5,0,0,0)
+UptimeVal.Size=UDim2.new(0.5,-10,1,0)
+UptimeVal.Font=Enum.Font.GothamBold
+UptimeVal.Text="00h 00m 00s"
+UptimeVal.TextColor3=Theme.AccentGlow
+UptimeVal.TextSize=12
+UptimeVal.TextXAlignment=Enum.TextXAlignment.Right
+UI_Stats["Uptime"]=UptimeVal
+
+CreateSectionLabel(Page_Info,"  STATS")
+CreateStatRow(Page_Info,"🔔 Total Webhook Sent","Total")
+CreateStatRow(Page_Info,"⚓ Secret Fish","Secret")
+CreateStatRow(Page_Info,"💎 Ruby Gemstone","Ruby")
+
+task.spawn(function()
+    while ScriptActive do
+        local d=tick()-SessionStart
+        local h=math.floor(d/3600); local m=math.floor((d%3600)/60); local s=math.floor(d%60)
+        if UptimeVal then UptimeVal.Text=string.format("%02dh %02dm %02ds",h,m,s) end
+        task.wait(1)
+    end
+end)
+
+-- ============================================================
+-- PAGE: WEBHOOK
+-- ============================================================
+CreateSectionLabel(Page_Webhook,"  DISCORD WEBHOOK")
+
+local webhookInput=CreateInput(Page_Webhook,"Webhook URL",
+    "https://discord.com/api/webhooks/...","",
+    function(v) Current_Webhook=v end)
+
+CreateSectionLabel(Page_Webhook,"  SPECIAL")
+CreateToggle(Page_Webhook,"💎 Ruby + Gemstone","RubyEnabled",false,function(v) Settings.RubyEnabled=v end)
+
+CreateButton(Page_Webhook,"🔧 Test Webhook",Theme.Accent,function()
+    if Current_Webhook=="" then ShowNotification("❌ Masukkan webhook URL dulu!",true) return end
+    ShowNotification("⏳ Mengirim test...",false)
+    task.spawn(function()
+        local payload={username="PAN HOOK",embeds={{
+            title="🔧 Test Webhook!",color=0x1E78FF,
+            fields={{name="Status",value="✅ Webhook connected!",inline=true},{name="Script",value="PAN HOOK v2.4",inline=true}},
+            footer={text="PAN HOOK v2.4"}
+        }}}
+        local ok2,_=pcall(function()
+            return httpRequest({Url=Current_Webhook,Method="POST",
+                Headers={["Content-Type"]="application/json"},Body=HttpService:JSONEncode(payload)})
+        end)
+        if ok2 then ShowNotification("✅ Test berhasil!",false)
+        else ShowNotification("❌ Gagal! Cek URL",true) end
+    end)
+end)
+
+-- ============================================================
+-- PAGE: FISHING
+-- ============================================================
+CreateSectionLabel(Page_Fishing,"  DETECTION")
+
+local detInfoLbl=Instance.new("TextLabel",Page_Fishing)
+detInfoLbl.BackgroundTransparency=1
+detInfoLbl.Size=UDim2.new(1,-4,0,36)
+detInfoLbl.Font=Enum.Font.Gotham
+detInfoLbl.Text="Monitoring backpack semua player di server.\nSecret fish terdeteksi saat masuk inventory."
+detInfoLbl.TextColor3=Theme.TextSecond
+detInfoLbl.TextSize=10
+detInfoLbl.TextWrapped=true
+detInfoLbl.TextYAlignment=Enum.TextYAlignment.Top
+detInfoLbl.TextXAlignment=Enum.TextXAlignment.Left
+
+CreateSectionLabel(Page_Fishing,"  STATUS")
+local statusFrame=Instance.new("Frame",Page_Fishing)
+statusFrame.BackgroundColor3=Theme.Content
+statusFrame.Size=UDim2.new(1,-4,0,30)
+statusFrame.BorderSizePixel=0
+AddCorner(statusFrame,6)
+AddStroke(statusFrame,Theme.Border,1)
+local statusDot=Instance.new("Frame",statusFrame)
+statusDot.BackgroundColor3=Theme.Success
+statusDot.Size=UDim2.new(0,8,0,8)
+statusDot.Position=UDim2.new(0,10,0.5,-4)
+statusDot.BorderSizePixel=0
+AddCorner(statusDot,4)
+local statusLbl=Instance.new("TextLabel",statusFrame)
+statusLbl.BackgroundTransparency=1
+statusLbl.Position=UDim2.new(0,24,0,0)
+statusLbl.Size=UDim2.new(1,-34,1,0)
+statusLbl.Font=Enum.Font.GothamBold
+statusLbl.Text="Monitoring backpack semua player..."
+statusLbl.TextColor3=Theme.TextPrimary
+statusLbl.TextSize=11
+statusLbl.TextXAlignment=Enum.TextXAlignment.Left
+
+local function UpdateFishingStatus(text, isOk)
+    if statusLbl then statusLbl.Text=text end
+    if statusDot then statusDot.BackgroundColor3=isOk and Theme.Success or Theme.Error end
+end
+
+CreateSectionLabel(Page_Fishing,"  MONITORED PLAYERS")
+local monitorCountLbl=Instance.new("TextLabel",Page_Fishing)
+monitorCountLbl.BackgroundTransparency=1
+monitorCountLbl.Size=UDim2.new(1,-4,0,20)
+monitorCountLbl.Font=Enum.Font.GothamBold
+monitorCountLbl.Text="👥 Players tracked: 0"
+monitorCountLbl.TextColor3=Theme.AccentGlow
+monitorCountLbl.TextSize=11
+monitorCountLbl.TextXAlignment=Enum.TextXAlignment.Left
+
+-- ============================================================
+-- PAGE: WEATHER
+-- ============================================================
+CreateSectionLabel(Page_Weather,"  CUACA TARGET")
+
+local weatherColors={
+    Cloudy=Color3.fromRGB(160,180,200),Wind=Color3.fromRGB(100,200,255),
+    Storm=Color3.fromRGB(80,80,200),Snow=Color3.fromRGB(200,230,255),
+    Galaxy=Color3.fromRGB(140,60,240),Radiant=Color3.fromRGB(255,200,50),
+}
+local weatherEmoji={Cloudy="☁️",Wind="🌬️",Storm="⛈️",Snow="❄️",Galaxy="🌌",Radiant="✨"}
+local allWeathers={"Cloudy","Wind","Storm","Snow","Galaxy","Radiant"}
+local WeatherQueue={"Wind","Cloudy","Storm"}
+local WeatherEnabled=false
+local WeatherThread=nil
+
+local wGrid=Instance.new("Frame",Page_Weather)
+wGrid.BackgroundTransparency=1
+wGrid.Size=UDim2.new(1,-4,0,74)
+wGrid.BorderSizePixel=0
+local wGL=Instance.new("UIGridLayout",wGrid)
+wGL.CellSize=UDim2.new(0.333,-3,0,32)
+wGL.CellPadding=UDim2.new(0,3,0,4)
+
+local wSelected={}
+for _,n in ipairs(WeatherQueue) do wSelected[n]=true end
+local wBtns={}
+
+local function refreshWBtns()
+    for name,btn in pairs(wBtns) do
+        local on=wSelected[name]
+        local c=weatherColors[name] or Theme.Accent
+        TweenService:Create(btn,TweenInfo.new(0.15),{
+            BackgroundColor3=on and c or Theme.Input,
+            BackgroundTransparency=on and 0.55 or 0.1
+        }):Play()
+        AddStroke(btn,on and c or Theme.Border,on and 1.5 or 1)
+    end
+end
+
+for _,name in ipairs(allWeathers) do
+    local btn=Instance.new("TextButton",wGrid)
+    local c=weatherColors[name] or Theme.Accent
+    local on=wSelected[name]
+    btn.BackgroundColor3=on and c or Theme.Input
+    btn.BackgroundTransparency=on and 0.55 or 0.1
+    btn.BorderSizePixel=0
+    btn.Font=Enum.Font.GothamBold
+    btn.Text=(weatherEmoji[name] or "")..name
+    btn.TextColor3=Color3.new(1,1,1)
+    btn.TextSize=10
+    AddCorner(btn,5)
+    AddStroke(btn,on and c or Theme.Border,on and 1.5 or 1)
+    wBtns[name]=btn
+    btn.MouseButton1Click:Connect(function()
+        wSelected[name]=not wSelected[name]
+        WeatherQueue={}
+        for _,n in ipairs(allWeathers) do if wSelected[n] then table.insert(WeatherQueue,n) end end
+        refreshWBtns()
+    end)
+end
+
+CreateSectionLabel(Page_Weather,"  DELAY (detik)")
+local delayInput=CreateInput(Page_Weather,"Delay","Contoh: 2","2",function(v) end)
+CreateSectionLabel(Page_Weather,"  CONTROL")
+
+local wStatusLbl=Instance.new("TextLabel",Page_Weather)
+wStatusLbl.BackgroundTransparency=1
+wStatusLbl.Size=UDim2.new(1,-4,0,16)
+wStatusLbl.Font=Enum.Font.Gotham
+wStatusLbl.Text="⚠️ Buka Weather Machine sebelum aktifkan"
+wStatusLbl.TextColor3=Theme.Warning
+wStatusLbl.TextSize=10
+wStatusLbl.TextXAlignment=Enum.TextXAlignment.Left
+
+-- Weather toggle (LOCKED)
+CreateToggle(Page_Weather,"🔒 Auto Buy Weather (Soon)","WeatherEnabled",false,function(state)
+    if state then
+        ShowNotification("🔒 Fitur sedang dalam perbaikan",true)
+        WeatherEnabled=false
+        if ToggleRegistry["WeatherEnabled"] then ToggleRegistry["WeatherEnabled"](false) end
+    end
+end)
+
+-- ============================================================
+-- PAGE: MISC
+-- ============================================================
+CreateSectionLabel(Page_Misc,"  IDENTITY")
+
+local hideInfoLbl=Instance.new("TextLabel",Page_Misc)
+hideInfoLbl.BackgroundTransparency=1
+hideInfoLbl.Size=UDim2.new(1,-4,0,30)
+hideInfoLbl.Font=Enum.Font.Gotham
+hideInfoLbl.Text="Nama player di webhook hanya tampil 3 huruf\npertama, sisanya disensor (e.g. Pan***)"
+hideInfoLbl.TextColor3=Theme.TextSecond
+hideInfoLbl.TextSize=10
+hideInfoLbl.TextWrapped=true
+hideInfoLbl.TextYAlignment=Enum.TextYAlignment.Top
+hideInfoLbl.TextXAlignment=Enum.TextXAlignment.Left
+
+CreateToggle(Page_Misc,"🕵️ Hide Identity","HideIdentity",false,function(v)
+    Settings.HideIdentity=v
+end)
+
+-- Preview
+local previewFrame=Instance.new("Frame",Page_Misc)
+previewFrame.BackgroundColor3=Theme.Content
+previewFrame.Size=UDim2.new(1,-4,0,30)
+previewFrame.BorderSizePixel=0
+AddCorner(previewFrame,6)
+AddStroke(previewFrame,Theme.Border,1)
+local previewLbl=Instance.new("TextLabel",previewFrame)
+previewLbl.BackgroundTransparency=1
+previewLbl.Position=UDim2.new(0,10,0,0)
+previewLbl.Size=UDim2.new(1,-20,1,0)
+previewLbl.Font=Enum.Font.Gotham
+previewLbl.TextColor3=Theme.TextSecond
+previewLbl.TextSize=11
+previewLbl.TextXAlignment=Enum.TextXAlignment.Left
+
+local localName = Players.LocalPlayer and Players.LocalPlayer.Name or "Player"
+local function UpdatePreview()
+    if Settings.HideIdentity then
+        local masked = localName:sub(1,3)..string.rep("*", math.max(0,#localName-3))
+        previewLbl.Text="👁 Preview: "..masked
+        previewLbl.TextColor3=Theme.Warning
+    else
+        previewLbl.Text="👁 Preview: "..localName
+        previewLbl.TextColor3=Theme.TextSecond
+    end
+end
+UpdatePreview()
+
+-- Patch toggle callback to also update preview
+local origHide = ToggleRegistry["HideIdentity"]
+ToggleRegistry["HideIdentity"] = function(val)
+    if origHide then origHide(val) end
+    UpdatePreview()
+end
+
+-- ============================================================
+-- OPEN BUTTON
+-- ============================================================
+local OpenBtn=Instance.new("TextButton",ScreenGui)
+OpenBtn.Name="PH_OpenBtn"
+OpenBtn.BackgroundColor3=Theme.Header
+OpenBtn.Size=UDim2.new(0,44,0,44)
+OpenBtn.Position=UDim2.new(0,18,0.5,-22)
+OpenBtn.Font=Enum.Font.GothamBold
+OpenBtn.Text="PH"
+OpenBtn.TextColor3=Theme.AccentGlow
+OpenBtn.TextSize=14
+OpenBtn.BorderSizePixel=0
+OpenBtn.Active=true
+OpenBtn.Draggable=true
+AddCorner(OpenBtn,10)
+AddStroke(OpenBtn,Theme.Border,1.5)
+OpenBtn.MouseButton1Click:Connect(function() Main.Visible=not Main.Visible end)
+
+-- ============================================================
+-- IDENTITY HELPER
+-- ============================================================
+local function MaskName(name)
+    if not Settings.HideIdentity then return name end
+    return name:sub(1,3)..string.rep("*", math.max(0,#name-3))
+end
+
+-- ============================================================
+-- WEBHOOK SENDERS
+-- ============================================================
+
+-- Secret fish webhook (dengan gambar ikan)
+local function SendSecretWebhook(player, fishName, fishAssetId, weight, mutation)
+    if Current_Webhook=="" then return end
+    local imageUrl="https://www.roblox.com/asset-thumbnail/image?assetId="
+        ..tostring(fishAssetId).."&width=420&height=420&format=png"
+    local avatarUrl="https://www.roblox.com/headshot-thumbnail/image?userId="
+        ..tostring(player.UserId).."&width=420&height=420&format=png"
+    local fields={
+        {name="👤 Player",  value="**"..MaskName(player.DisplayName).."** (@"..MaskName(player.Name)..")", inline=false},
+        {name="🐟 Ikan",    value="`"..fishName.."`",  inline=true},
+        {name="⚖️ Berat",  value="`"..tostring(weight).."`", inline=true},
+    }
+    if mutation and mutation~="" and mutation~="Normal" and mutation~="None" then
+        table.insert(fields,{name="✨ Mutasi",value="`"..mutation.."`",inline=true})
+    end
+    local payload={
+        username="PAN HOOK",
+        embeds={{
+            title="✨ SECRET FISH CAUGHT!",
+            color=65431,
+            fields=fields,
+            image={url=imageUrl},
+            thumbnail={url=avatarUrl},
+            footer={text="PAN HOOK v2.4 • Fish It"},
+            timestamp=os.date("!%Y-%m-%dT%H:%M:%SZ")
+        }}
+    }
+    pcall(function()
+        httpRequest({Url=Current_Webhook,Method="POST",
+            Headers={["Content-Type"]="application/json"},Body=HttpService:JSONEncode(payload)})
+    end)
+    Stats.Total=Stats.Total+1
+    Stats.Secret=Stats.Secret+1
+    if UI_Stats["Total"] then UI_Stats["Total"].Text=tostring(Stats.Total) end
+    if UI_Stats["Secret"] then UI_Stats["Secret"].Text=tostring(Stats.Secret) end
+end
+
+-- Ruby gemstone webhook
+local function SendRubyWebhook(player, fishName, fishAssetId, weight, mutation)
+    if Current_Webhook=="" then return end
+    local imageUrl= fishAssetId and
+        "https://www.roblox.com/asset-thumbnail/image?assetId="..tostring(fishAssetId).."&width=420&height=420&format=png"
+        or nil
+    local avatarUrl="https://www.roblox.com/headshot-thumbnail/image?userId="
+        ..tostring(player.UserId).."&width=420&height=420&format=png"
+    local embed={
+        title="💎 Ruby Gemstone!",
+        color=0x32DCBC,
+        fields={
+            {name="👤 Player", value="**"..MaskName(player.DisplayName).."** (@"..MaskName(player.Name)..")", inline=false},
+            {name="🐟 Ikan",   value="`"..fishName.."`", inline=true},
+            {name="⚖️ Berat", value="`"..tostring(weight).."`", inline=true},
+            {name="🧬 Mutasi", value="`Gemstone`", inline=true},
+        },
+        thumbnail={url=avatarUrl},
+        footer={text="PAN HOOK v2.4 • Fish It"},
+        timestamp=os.date("!%Y-%m-%dT%H:%M:%SZ")
+    }
+    if imageUrl then embed.image={url=imageUrl} end
+    local payload={username="PAN HOOK",embeds={embed}}
+    pcall(function()
+        httpRequest({Url=Current_Webhook,Method="POST",
+            Headers={["Content-Type"]="application/json"},Body=HttpService:JSONEncode(payload)})
+    end)
+    Stats.Total=Stats.Total+1
+    Stats.Ruby=Stats.Ruby+1
+    if UI_Stats["Total"] then UI_Stats["Total"].Text=tostring(Stats.Total) end
+    if UI_Stats["Ruby"] then UI_Stats["Ruby"].Text=tostring(Stats.Ruby) end
+end
+
+-- Leave webhook
+local function SendLeaveWebhook(playerName, userId)
+    if Current_Webhook=="" then return end
+    local avatarUrl="https://www.roblox.com/headshot-thumbnail/image?userId="
+        ..tostring(userId).."&width=420&height=420&format=png"
+    local payload={
+        username="PAN HOOK",
+        embeds={{
+            title="👋 Player Left Server",
+            description="**@"..MaskName(playerName).."** meninggalkan server.",
+            color=0xFF4444,
+            thumbnail={url=avatarUrl},
+            footer={text="PAN HOOK v2.4 • Fish It"},
+            timestamp=os.date("!%Y-%m-%dT%H:%M:%SZ")
+        }}
+    }
+    pcall(function()
+        httpRequest({Url=Current_Webhook,Method="POST",
+            Headers={["Content-Type"]="application/json"},Body=HttpService:JSONEncode(payload)})
+    end)
+end
+
+-- ============================================================
+-- FETCH FISH ATTRIBUTES (weight & mutation dengan retry)
+-- ============================================================
+local function FetchFishAttributes(item)
+    local w, m = "Unknown", "Normal"
+    for i = 1, 10 do
+        w = item:GetAttribute("Weight")
+            or (item:FindFirstChild("Weight") and item.Weight.Value)
+            or w
+        m = item:GetAttribute("Mutation")
+            or (item:FindFirstChild("Mutation") and item.Mutation.Value)
+            or m
+        if w ~= "Unknown" then break end
+        task.wait(0.1)
+    end
+    if type(w) == "number" then
+        w = string.format("%.2f kg", w)
+    end
+    return w, m
+end
+
+-- ============================================================
+-- BACKPACK MONITOR
+-- ============================================================
+local monitoredPlayers = {}
+local playerCount = 0
+
+local function MonitorBackpack(player, backpack)
+    backpack.ChildAdded:Connect(function(item)
+        if not ScriptActive then return end
+
+        local fishAssetId = SecretFishData[item.Name]
+
+        -- Cek Ruby Gemstone
+        if Settings.RubyEnabled then
+            local mut = item:GetAttribute("Mutation")
+                or (item:FindFirstChild("Mutation") and item.Mutation.Value)
+                or ""
+            if tostring(mut):lower()=="gemstone" and item.Name:lower():find("ruby") then
+                task.spawn(function()
+                    local weight, mutation = FetchFishAttributes(item)
+                    SendRubyWebhook(player, item.Name, fishAssetId, weight, mutation)
+                    UpdateFishingStatus("💎 Ruby: "..item.Name.." | "..player.Name, true)
+                end)
+                return
+            end
+        end
+
+        -- Cek Secret Fish
+        if fishAssetId then
+            task.spawn(function()
+                local weight, mutation = FetchFishAttributes(item)
+                SendSecretWebhook(player, item.Name, fishAssetId, weight, mutation)
+                UpdateFishingStatus("✨ "..item.Name.." | "..player.Name, true)
+            end)
+        end
+    end)
+end
+
+local function TrackPlayer(player)
+    if monitoredPlayers[player.UserId] then return end
+    monitoredPlayers[player.UserId] = true
+    playerCount = playerCount + 1
+    if monitorCountLbl then
+        monitorCountLbl.Text = "👥 Players tracked: "..playerCount
+    end
+
+    -- Monitor backpack yang sudah ada
+    local bp = player:FindFirstChild("Backpack")
+    if bp then MonitorBackpack(player, bp) end
+
+    -- Monitor saat karakter respawn (backpack baru)
+    local conn = player.CharacterAdded:Connect(function()
+        local newBp = player:WaitForChild("Backpack", 10)
+        if newBp then MonitorBackpack(player, newBp) end
+    end)
+    table.insert(Connections, conn)
+end
+
+-- Track semua player yang sudah ada
+for _, player in pairs(Players:GetPlayers()) do
+    task.spawn(function() TrackPlayer(player) end)
+end
+
+-- Track player baru yang join
+table.insert(Connections, Players.PlayerAdded:Connect(function(player)
+    if not ScriptActive then return end
+    task.spawn(function() TrackPlayer(player) end)
+end))
+
+-- Hook player leave
+table.insert(Connections, Players.PlayerRemoving:Connect(function(p)
+    if not ScriptActive then return end
+    monitoredPlayers[p.UserId] = nil
+    playerCount = math.max(0, playerCount - 1)
+    if monitorCountLbl then
+        monitorCountLbl.Text = "👥 Players tracked: "..playerCount
+    end
+    task.spawn(function() SendLeaveWebhook(p.Name, p.UserId) end)
+end))
+
+-- ============================================================
+print("✅ PAN HOOK v2.4 Loaded! (Backpack Monitor)")
+ShowNotification("🎣 PAN HOOK v2.4 Ready!",false)
