@@ -1,0 +1,132 @@
+name: Upload Fish Images to Discord
+
+on:
+  workflow_dispatch: # Jalankan manual dari GitHub
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install requests
+        run: pip install requests
+
+      - name: Upload fish images
+        run: |
+          python3 << 'EOF'
+          import requests
+          import time
+          import json
+
+          BOT_TOKEN = "MTQ3OTc0MjM5NzcwMDExMjQwNA.GV_P6I.xonMgBr-Rg99sczqrwCHYX8mWak-B5QXdjUU40"
+          CHANNEL_ID = "1454729773434798204"
+
+          FISH_ASSETS = {
+              18335072046: "Crystal Crab",
+              18335061483: "Orca",
+              18335056722: "Zombie Shark",
+              18335056551: "Zombie Megalodon",
+              18335068212: "Blob Shark",
+              18335059639: "Ghost Shark",
+              18335057177: "Skeleton Narwhal",
+              18335059511: "Ghost Worm Fish",
+              18335057406: "Worm Fish",
+              18335063073: "Megalodon",
+              18335118712: "1x1x1x1 Comet Shark",
+              18335067980: "Bloodmoon Whale",
+              18335063708: "Lochness Monster",
+              18335062145: "Monster Shark",
+              18335060416: "Eerie Shark",
+              18335058867: "Great Whale",
+              18335059957: "Frostborn Shark",
+              18335068417: "Armored Shark",
+              18335058097: "Scare",
+              18335058252: "Queen Crab",
+              18335064431: "King Crab",
+              18335066928: "Cryoshade Glider",
+              18335060799: "Panther Eel",
+              18335059345: "Giant Squid",
+              18335066551: "Depthseeker Ray",
+              18335058448: "Robot Kraken",
+              18335061981: "Mosasaur Shark",
+              18335064243: "King Jelly",
+              18335067645: "Bone Whale",
+              18335060241: "Elshark Gran Maja",
+              18335068612: "Ancient Whale",
+              18335059068: "Gladiator Shark",
+              18335057777: "Talon Serpent",
+              18335059223: "Hacker Shark",
+              18335063983: "Leviathan",
+          }
+
+          HEADERS = {"Authorization": f"Bot {BOT_TOKEN}"}
+          results = {}
+
+          def get_thumbnail_url(asset_id):
+              try:
+                  url = f"https://thumbnails.roblox.com/v1/assets?assetIds={asset_id}&returnPolicy=PlaceHolder&size=420x420&format=Png&isCircular=false"
+                  r = requests.get(url, timeout=10)
+                  data = r.json()
+                  img_url = data["data"][0]["imageUrl"]
+                  if "placeholder" in img_url.lower():
+                      return None
+                  return img_url
+              except:
+                  return None
+
+          def download_image(img_url):
+              try:
+                  r = requests.get(img_url, timeout=15)
+                  if r.status_code == 200:
+                      return r.content
+              except:
+                  pass
+              return None
+
+          def upload_to_discord(asset_id, fish_name, img_data):
+              try:
+                  files = {"file": (f"{asset_id}.png", img_data, "image/png")}
+                  payload = {"content": f"**{asset_id}** | {fish_name}"}
+                  r = requests.post(
+                      f"https://discord.com/api/v10/channels/{CHANNEL_ID}/messages",
+                      headers=HEADERS, data=payload, files=files, timeout=15
+                  )
+                  if r.status_code == 200:
+                      cdn_url = r.json()["attachments"][0]["url"].split("?")[0]
+                      return cdn_url
+                  else:
+                      print(f"Discord error {r.status_code}: {r.text[:100]}")
+              except Exception as e:
+                  print(f"Upload error: {e}")
+              return None
+
+          print("Starting upload...")
+          for asset_id, fish_name in FISH_ASSETS.items():
+              print(f"Processing [{asset_id}] {fish_name}")
+              thumb_url = get_thumbnail_url(asset_id)
+              if not thumb_url:
+                  print(f"  SKIP - no thumbnail")
+                  results[str(asset_id)] = None
+                  time.sleep(0.5)
+                  continue
+              img_data = download_image(thumb_url)
+              if not img_data:
+                  print(f"  SKIP - download failed")
+                  results[str(asset_id)] = None
+                  time.sleep(0.5)
+                  continue
+              cdn_url = upload_to_discord(asset_id, fish_name, img_data)
+              results[str(asset_id)] = cdn_url
+              if cdn_url:
+                  print(f"  OK: {cdn_url}")
+              time.sleep(1.5)
+
+          print("\n\n=== LUA CODE HASIL ===")
+          print("local FishImageURLs = {")
+          for asset_id, url in results.items():
+              fish = FISH_ASSETS.get(int(asset_id), "?")
+              if url:
+                  print(f'    [{asset_id}] = "{url}", -- {fish}')
+              else:
+                  print(f'    -- [{asset_id}] = nil, -- {fish} (gagal)')
+          print("}")
+          EOF
