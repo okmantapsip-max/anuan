@@ -44,10 +44,7 @@ print("✅ Loaded " .. #fishNames .. " SECRET fish")
 -- ========== SEND WEBHOOK ==========
 local function SendWebhook(fishName, playerName, userId)
     local fishData = FishDatabase[fishName]
-
-    -- Pakai proxy biar gambar bisa muncul di Discord
     local fishImg = fishData and (PROXY .. "/asset/" .. fishData.assetId) or nil
-    local avatarUrl = PROXY .. "/avatar/" .. tostring(userId)
 
     local embed = {
         title = "🚨 SECRET FISH DETECTED!",
@@ -58,9 +55,8 @@ local function SendWebhook(fishName, playerName, userId)
         },
         footer = { text = "BLOX Gank Webhook | " .. os.date("%X") },
         timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-        thumbnail = { url = avatarUrl },
+        image = { url = fishImg or "" },
     }
-    if fishImg then embed.image = { url = fishImg } end
 
     local requestFunc = (syn and syn.request) or (http and http.request) or http_request or request
     if not requestFunc then return false end
