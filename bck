@@ -61,7 +61,7 @@ local SecretFishDB = {
     ["Pirate Megalodon"]          = 18335063073,
     ["Viridis Lurker"]            = 18335060799,
     ["Cursed Kraken"]             = 18335058448,
-    ["Ancient Magma Whale"]       = 18335068612,
+    ["Ancient Magma Whale"]       = 79419619363511,
     ["Rainbow Comet Shark"]       = 18335118712,
     ["Love Nessie"]               = 18335063708,
     ["Broken Heart Nessie"]       = 18335063708,
@@ -272,8 +272,7 @@ end
 
 -- // SEND TEST WEBHOOK //
 local function SendTestWebhook(testBtn)
-    local dummyList = {"Leviathan", "Cursed Kraken", "Ancient Magma Whale", "Megalodon", "Bloodmoon Whale"}
-    local dummyFish = dummyList[math.random(1, #dummyList)]
+    local dummyFish = "Ancient Magma Whale"
     local dummyWeight = tostring(math.random(100, 9999) / 10) .. " kg"
     local lp = Players.LocalPlayer
     local avatarUrl = PROXY .. "/avatar/" .. tostring(lp.UserId)
