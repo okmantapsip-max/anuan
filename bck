@@ -1,4 +1,4 @@
--- // Mini Dex - Script Browser & Downloader //
+-- // Mini Dex - Script Browser & Downloader (Landscape) //
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
@@ -7,9 +7,9 @@ local UserInputService = game:GetService("UserInputService")
 local lp = Players.LocalPlayer
 
 -- // STATE //
-local currentPath = {}       -- stack navigasi
-local currentParent = game   -- node yang sedang dibrowse
-local selectedScripts = {}   -- { [instance] = true }
+local currentPath = {}
+local currentParent = game
+local selectedScripts = {}
 
 -- // ROOTS //
 local ROOTS = {
@@ -26,11 +26,9 @@ local ROOTS = {
 local function isScript(obj)
     return obj:IsA("Script") or obj:IsA("LocalScript") or obj:IsA("ModuleScript")
 end
-
 local function hasChildren(obj)
     return #obj:GetChildren() > 0
 end
-
 local function getIcon(obj)
     if obj:IsA("ModuleScript") then return "📦"
     elseif obj:IsA("LocalScript") then return "📜"
@@ -38,40 +36,37 @@ local function getIcon(obj)
     elseif obj:IsA("Model") then return "🗂️"
     elseif obj:IsA("Tool") then return "🔧"
     elseif obj:IsA("Folder") then return "📁"
-    elseif obj:IsA("Frame") or obj:IsA("ScreenGui") then return "🖼️"
     elseif hasChildren(obj) then return "📂"
     else return "▪️"
     end
 end
 
--- // UI //
+-- // GUI //
 local gui = Instance.new("ScreenGui")
 gui.Name = "MiniDex"
 gui.ResetOnSpawn = false
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = (gethui and gethui()) or CoreGui
 
--- Main frame
+-- Main frame: landscape (lebar x pendek)
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 360, 0, 500)
-frame.Position = UDim2.new(0.5, -180, 0.5, -250)
+frame.Size = UDim2.new(0, 660, 0, 340)
+frame.Position = UDim2.new(0.5, -330, 0.5, -170)
 frame.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
 frame.BorderSizePixel = 0
 frame.Parent = gui
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
-
 local stroke = Instance.new("UIStroke", frame)
 stroke.Color = Color3.fromRGB(50, 50, 70)
 stroke.Thickness = 1
 
 -- Top bar
 local topBar = Instance.new("Frame")
-topBar.Size = UDim2.new(1, 0, 0, 40)
+topBar.Size = UDim2.new(1, 0, 0, 36)
 topBar.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 topBar.BorderSizePixel = 0
 topBar.Parent = frame
 Instance.new("UICorner", topBar).CornerRadius = UDim.new(0, 10)
--- fix bottom corners topbar
 local tbFix = Instance.new("Frame")
 tbFix.Size = UDim2.new(1, 0, 0, 10)
 tbFix.Position = UDim2.new(0, 0, 1, -10)
@@ -92,12 +87,12 @@ titleLabel.Parent = topBar
 
 local closeBtn = Instance.new("TextButton")
 closeBtn.Text = "✕"
-closeBtn.Size = UDim2.new(0, 28, 0, 22)
-closeBtn.Position = UDim2.new(1, -32, 0.5, -11)
+closeBtn.Size = UDim2.new(0, 26, 0, 20)
+closeBtn.Position = UDim2.new(1, -30, 0.5, -10)
 closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 closeBtn.Font = Enum.Font.GothamBold
-closeBtn.TextSize = 12
+closeBtn.TextSize = 11
 closeBtn.BorderSizePixel = 0
 closeBtn.Parent = topBar
 Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 4)
@@ -105,12 +100,12 @@ closeBtn.MouseButton1Click:Connect(function() gui:Destroy() end)
 
 local minBtn = Instance.new("TextButton")
 minBtn.Text = "—"
-minBtn.Size = UDim2.new(0, 28, 0, 22)
-minBtn.Position = UDim2.new(1, -64, 0.5, -11)
+minBtn.Size = UDim2.new(0, 26, 0, 20)
+minBtn.Position = UDim2.new(1, -60, 0.5, -10)
 minBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
 minBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
 minBtn.Font = Enum.Font.GothamBold
-minBtn.TextSize = 12
+minBtn.TextSize = 11
 minBtn.BorderSizePixel = 0
 minBtn.Parent = topBar
 Instance.new("UICorner", minBtn).CornerRadius = UDim.new(0, 4)
@@ -119,7 +114,7 @@ local minimized = false
 minBtn.MouseButton1Click:Connect(function()
     minimized = not minimized
     TweenService:Create(frame, TweenInfo.new(0.2), {
-        Size = minimized and UDim2.new(0, 360, 0, 40) or UDim2.new(0, 360, 0, 500)
+        Size = minimized and UDim2.new(0, 660, 0, 36) or UDim2.new(0, 660, 0, 340)
     }):Play()
     minBtn.Text = minimized and "□" or "—"
 end)
@@ -141,117 +136,123 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- Breadcrumb bar
+-- ============================================================
+-- KIRI: List panel (60% lebar)
+-- ============================================================
+local leftPanel = Instance.new("Frame")
+leftPanel.Size = UDim2.new(0, 420, 1, -44)
+leftPanel.Position = UDim2.new(0, 8, 0, 40)
+leftPanel.BackgroundColor3 = Color3.fromRGB(22, 22, 30)
+leftPanel.BorderSizePixel = 0
+leftPanel.Parent = frame
+Instance.new("UICorner", leftPanel).CornerRadius = UDim.new(0, 8)
+
+-- Breadcrumb
 local breadBar = Instance.new("Frame")
-breadBar.Size = UDim2.new(1, -16, 0, 28)
-breadBar.Position = UDim2.new(0, 8, 0, 44)
-breadBar.BackgroundColor3 = Color3.fromRGB(28, 28, 38)
+breadBar.Size = UDim2.new(1, -8, 0, 24)
+breadBar.Position = UDim2.new(0, 4, 0, 4)
+breadBar.BackgroundColor3 = Color3.fromRGB(28, 28, 40)
 breadBar.BorderSizePixel = 0
-breadBar.Parent = frame
-Instance.new("UICorner", breadBar).CornerRadius = UDim.new(0, 6)
+breadBar.Parent = leftPanel
+Instance.new("UICorner", breadBar).CornerRadius = UDim.new(0, 5)
 
 local breadLabel = Instance.new("TextLabel")
 breadLabel.Size = UDim2.new(1, -8, 1, 0)
-breadLabel.Position = UDim2.new(0, 8, 0, 0)
+breadLabel.Position = UDim2.new(0, 6, 0, 0)
 breadLabel.BackgroundTransparency = 1
 breadLabel.Text = "game"
 breadLabel.TextColor3 = Color3.fromRGB(120, 180, 255)
 breadLabel.Font = Enum.Font.Gotham
-breadLabel.TextSize = 11
+breadLabel.TextSize = 10
 breadLabel.TextXAlignment = Enum.TextXAlignment.Left
 breadLabel.TextTruncate = Enum.TextTruncate.AtEnd
 breadLabel.Parent = breadBar
 
--- Back button
-local backBtn = Instance.new("TextButton")
-backBtn.Text = "◀ Back"
-backBtn.Size = UDim2.new(0, 70, 0, 24)
-backBtn.Position = UDim2.new(0, 8, 0, 76)
-backBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
-backBtn.TextColor3 = Color3.fromRGB(180, 180, 220)
-backBtn.Font = Enum.Font.Gotham
-backBtn.TextSize = 11
-backBtn.BorderSizePixel = 0
-backBtn.Parent = frame
-Instance.new("UICorner", backBtn).CornerRadius = UDim.new(0, 5)
-
--- Select all scripts button
-local selectAllBtn = Instance.new("TextButton")
-selectAllBtn.Text = "☑ Select Scripts"
-selectAllBtn.Size = UDim2.new(0, 110, 0, 24)
-selectAllBtn.Position = UDim2.new(0, 84, 0, 76)
-selectAllBtn.BackgroundColor3 = Color3.fromRGB(40, 60, 40)
-selectAllBtn.TextColor3 = Color3.fromRGB(150, 220, 150)
-selectAllBtn.Font = Enum.Font.Gotham
-selectAllBtn.TextSize = 11
-selectAllBtn.BorderSizePixel = 0
-selectAllBtn.Parent = frame
-Instance.new("UICorner", selectAllBtn).CornerRadius = UDim.new(0, 5)
-
--- Selected count label
-local selectedLabel = Instance.new("TextLabel")
-selectedLabel.Text = "0 dipilih"
-selectedLabel.Size = UDim2.new(0, 80, 0, 24)
-selectedLabel.Position = UDim2.new(1, -90, 0, 76)
-selectedLabel.BackgroundTransparency = 1
-selectedLabel.TextColor3 = Color3.fromRGB(150, 150, 180)
-selectedLabel.Font = Enum.Font.Gotham
-selectedLabel.TextSize = 11
-selectedLabel.TextXAlignment = Enum.TextXAlignment.Right
-selectedLabel.Parent = frame
-
--- List area
+-- List scroll
 local listFrame = Instance.new("ScrollingFrame")
-listFrame.Size = UDim2.new(1, -16, 0, 310)
-listFrame.Position = UDim2.new(0, 8, 0, 108)
-listFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 32)
+listFrame.Size = UDim2.new(1, -8, 1, -36)
+listFrame.Position = UDim2.new(0, 4, 0, 32)
+listFrame.BackgroundTransparency = 1
 listFrame.BorderSizePixel = 0
-listFrame.ScrollBarThickness = 4
+listFrame.ScrollBarThickness = 3
 listFrame.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 120)
 listFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-listFrame.Parent = frame
-Instance.new("UICorner", listFrame).CornerRadius = UDim.new(0, 6)
+listFrame.Parent = leftPanel
 
 local listLayout = Instance.new("UIListLayout", listFrame)
 listLayout.Padding = UDim.new(0, 2)
-
 local listPad = Instance.new("UIPadding", listFrame)
-listPad.PaddingTop = UDim.new(0, 4)
-listPad.PaddingLeft = UDim.new(0, 4)
+listPad.PaddingTop = UDim.new(0, 2)
+listPad.PaddingLeft = UDim.new(0, 2)
 listPad.PaddingRight = UDim.new(0, 4)
 
--- Bottom bar
-local bottomBar = Instance.new("Frame")
-bottomBar.Size = UDim2.new(1, -16, 0, 50)
-bottomBar.Position = UDim2.new(0, 8, 1, -58)
-bottomBar.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-bottomBar.BorderSizePixel = 0
-bottomBar.Parent = frame
-Instance.new("UICorner", bottomBar).CornerRadius = UDim.new(0, 8)
+-- ============================================================
+-- KANAN: Control panel (sisa lebar)
+-- ============================================================
+local rightPanel = Instance.new("Frame")
+rightPanel.Size = UDim2.new(1, -436, 1, -44)
+rightPanel.Position = UDim2.new(0, 432, 0, 40)
+rightPanel.BackgroundColor3 = Color3.fromRGB(22, 22, 30)
+rightPanel.BorderSizePixel = 0
+rightPanel.Parent = frame
+Instance.new("UICorner", rightPanel).CornerRadius = UDim.new(0, 8)
 
-local downloadBtn = Instance.new("TextButton")
-downloadBtn.Text = "⬇ Download Selected"
-downloadBtn.Size = UDim2.new(0.6, -4, 0, 34)
-downloadBtn.Position = UDim2.new(0, 8, 0.5, -17)
-downloadBtn.BackgroundColor3 = Color3.fromRGB(0, 160, 90)
-downloadBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-downloadBtn.Font = Enum.Font.GothamBold
+local function makeBtn(parent, text, bgColor, textColor, posY, sizeY)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -16, 0, sizeY or 36)
+    btn.Position = UDim2.new(0, 8, 0, posY)
+    btn.BackgroundColor3 = bgColor
+    btn.TextColor3 = textColor
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 12
+    btn.Text = text
+    btn.BorderSizePixel = 0
+    btn.Parent = parent
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 7)
+    return btn
+end
+
+-- Selected count
+local selectedLabel = Instance.new("TextLabel")
+selectedLabel.Size = UDim2.new(1, -16, 0, 30)
+selectedLabel.Position = UDim2.new(0, 8, 0, 8)
+selectedLabel.BackgroundColor3 = Color3.fromRGB(30, 30,45)
+selectedLabel.TextColor3 = Color3.fromRGB(120, 220, 160)
+selectedLabel.Font = Enum.Font.GothamBold
+selectedLabel.TextSize = 13
+selectedLabel.Text = "0 dipilih"
+selectedLabel.BorderSizePixel = 0
+selectedLabel.Parent = rightPanel
+Instance.new("UICorner", selectedLabel).CornerRadius = UDim.new(0, 6)
+
+local backBtn     = makeBtn(rightPanel, "◀ Back",            Color3.fromRGB(40,40,62),   Color3.fromRGB(180,180,220), 46, 32)
+local selectAllBtn= makeBtn(rightPanel, "☑ Select All Scripts", Color3.fromRGB(35,55,35), Color3.fromRGB(140,220,140), 84, 32)
+local clearBtn    = makeBtn(rightPanel, "🗑 Clear Selection", Color3.fromRGB(60,30,30),   Color3.fromRGB(220,130,130), 122, 32)
+
+-- Divider
+local div = Instance.new("Frame")
+div.Size = UDim2.new(1, -16, 0, 1)
+div.Position = UDim2.new(0, 8, 0, 162)
+div.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+div.BorderSizePixel = 0
+div.Parent = rightPanel
+
+local downloadBtn = makeBtn(rightPanel, "⬇ Download Selected", Color3.fromRGB(0,150,80), Color3.fromRGB(255,255,255), 170, 44)
 downloadBtn.TextSize = 13
-downloadBtn.BorderSizePixel = 0
-downloadBtn.Parent = bottomBar
-Instance.new("UICorner", downloadBtn).CornerRadius = UDim.new(0, 7)
 
-local clearBtn = Instance.new("TextButton")
-clearBtn.Text = "🗑 Clear"
-clearBtn.Size = UDim2.new(0.4, -12, 0, 34)
-clearBtn.Position = UDim2.new(0.6, 4, 0.5, -17)
-clearBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 40)
-clearBtn.TextColor3 = Color3.fromRGB(220, 150, 150)
-clearBtn.Font = Enum.Font.GothamBold
-clearBtn.TextSize = 13
-clearBtn.BorderSizePixel = 0
-clearBtn.Parent = bottomBar
-Instance.new("UICorner", clearBtn).CornerRadius = UDim.new(0, 7)
+-- Status label
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(1, -16, 0, 36)
+statusLabel.Position = UDim2.new(0, 8, 0, 220)
+statusLabel.BackgroundTransparency = 1
+statusLabel.TextColor3 = Color3.fromRGB(140, 140, 180)
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.TextSize = 10
+statusLabel.TextWrapped = true
+statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+statusLabel.TextYAlignment = Enum.TextYAlignment.Top
+statusLabel.Text = "Pilih script lalu tekan\nDownload Selected"
+statusLabel.Parent = rightPanel
 
 -- // RENDER LIST //
 local function updateSelectedLabel()
@@ -261,18 +262,13 @@ local function updateSelectedLabel()
 end
 
 local function renderList(parent)
-    -- clear existing
     for _, c in ipairs(listFrame:GetChildren()) do
         if c:IsA("Frame") then c:Destroy() end
     end
 
     local items = {}
-
-    -- kalau di root (game), tampilkan ROOTS
     if parent == game then
-        for _, root in ipairs(ROOTS) do
-            table.insert(items, root.obj)
-        end
+        for _, root in ipairs(ROOTS) do table.insert(items, root.obj) end
     else
         for _, child in ipairs(parent:GetChildren()) do
             table.insert(items, child)
@@ -281,34 +277,34 @@ local function renderList(parent)
 
     for _, obj in ipairs(items) do
         local row = Instance.new("Frame")
-        row.Size = UDim2.new(1, 0, 0, 34)
-        row.BackgroundColor3 = Color3.fromRGB(30, 30, 42)
+        row.Size = UDim2.new(1, 0, 0, 30)
+        row.BackgroundColor3 = selectedScripts[obj] and Color3.fromRGB(25,45,30) or Color3.fromRGB(28, 28, 40)
         row.BorderSizePixel = 0
         row.Parent = listFrame
-        Instance.new("UICorner", row).CornerRadius = UDim.new(0, 6)
+        Instance.new("UICorner", row).CornerRadius = UDim.new(0, 5)
 
-        -- Checkbox (hanya untuk script)
+        -- Checkbox
         local checkbox = Instance.new("TextButton")
-        checkbox.Size = UDim2.new(0, 22, 0, 22)
-        checkbox.Position = UDim2.new(0, 6, 0.5, -11)
+        checkbox.Size = UDim2.new(0, 20, 0, 20)
+        checkbox.Position = UDim2.new(0, 5, 0.5, -10)
         checkbox.BorderSizePixel = 0
         checkbox.Font = Enum.Font.GothamBold
-        checkbox.TextSize = 12
+        checkbox.TextSize = 11
+        checkbox.TextColor3 = Color3.fromRGB(255, 255, 255)
         checkbox.Parent = row
+        Instance.new("UICorner", checkbox).CornerRadius = UDim.new(0, 4)
 
         if isScript(obj) then
             local checked = selectedScripts[obj] == true
             checkbox.Text = checked and "✓" or ""
-            checkbox.BackgroundColor3 = checked and Color3.fromRGB(0, 160, 80) or Color3.fromRGB(50, 50, 70)
-            checkbox.TextColor3 = Color3.fromRGB(255, 255, 255)
-            Instance.new("UICorner", checkbox).CornerRadius = UDim.new(0, 4)
+            checkbox.BackgroundColor3 = checked and Color3.fromRGB(0, 160, 80) or Color3.fromRGB(45, 45, 65)
 
             checkbox.MouseButton1Click:Connect(function()
                 if selectedScripts[obj] then
                     selectedScripts[obj] = nil
                     checkbox.Text = ""
-                    checkbox.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-                    row.BackgroundColor3 = Color3.fromRGB(30, 30, 42)
+                    checkbox.BackgroundColor3 = Color3.fromRGB(45, 45, 65)
+                    row.BackgroundColor3 = Color3.fromRGB(28, 28, 40)
                 else
                     selectedScripts[obj] = true
                     checkbox.Text = "✓"
@@ -319,45 +315,41 @@ local function renderList(parent)
             end)
         else
             checkbox.Text = ""
-            checkbox.BackgroundColor3 = Color3.fromRGB(35, 35, 48)
-            checkbox.TextColor3 = Color3.fromRGB(100, 100, 120)
-            Instance.new("UICorner", checkbox).CornerRadius = UDim.new(0, 4)
+            checkbox.BackgroundColor3 = Color3.fromRGB(32, 32, 45)
             checkbox.Active = false
             checkbox.AutoButtonColor = false
         end
 
-        -- Icon + Name
+        -- Name button
         local nameBtn = Instance.new("TextButton")
-        nameBtn.Size = UDim2.new(1, -80, 1, 0)
-        nameBtn.Position = UDim2.new(0, 34, 0, 0)
+        nameBtn.Size = UDim2.new(1, -90, 1, 0)
+        nameBtn.Position = UDim2.new(0, 30, 0, 0)
         nameBtn.BackgroundTransparency = 1
-        nameBtn.TextColor3 = isScript(obj) and Color3.fromRGB(150, 220, 255) or Color3.fromRGB(210, 210, 210)
+        nameBtn.TextColor3 = isScript(obj) and Color3.fromRGB(140, 210, 255) or Color3.fromRGB(200, 200, 200)
         nameBtn.Font = Enum.Font.Gotham
-        nameBtn.TextSize = 12
+        nameBtn.TextSize = 11
         nameBtn.TextXAlignment = Enum.TextXAlignment.Left
         nameBtn.Text = getIcon(obj) .. " " .. obj.Name
         nameBtn.TextTruncate = Enum.TextTruncate.AtEnd
         nameBtn.Parent = row
 
-        -- ClassName badge
-        local classBadge = Instance.new("TextLabel")
-        classBadge.Size = UDim2.new(0, 80, 0, 18)
-        classBadge.Position = UDim2.new(1, -86, 0.5, -9)
-        classBadge.BackgroundColor3 = Color3.fromRGB(40, 40, 58)
-        classBadge.TextColor3 = Color3.fromRGB(120, 120, 160)
-        classBadge.Font = Enum.Font.Gotham
-        classBadge.TextSize = 9
-        classBadge.Text = obj.ClassName
-        classBadge.TextTruncate = Enum.TextTruncate.AtEnd
-        classBadge.Parent = row
-        Instance.new("UICorner", classBadge).CornerRadius = UDim.new(0, 4)
+        -- Class badge
+        local badge = Instance.new("TextLabel")
+        badge.Size = UDim2.new(0, 82, 0, 16)
+        badge.Position = UDim2.new(1, -88, 0.5, -8)
+        badge.BackgroundColor3 = Color3.fromRGB(35, 35, 52)
+        badge.TextColor3 = Color3.fromRGB(110, 110, 150)
+        badge.Font = Enum.Font.Gotham
+        badge.TextSize = 8
+        badge.Text = obj.ClassName
+        badge.TextTruncate = Enum.TextTruncate.AtEnd
+        badge.Parent = row
+        Instance.new("UICorner", badge).CornerRadius = UDim.new(0, 3)
 
-        -- Navigate into (kalau punya children)
         if hasChildren(obj) then
             nameBtn.MouseButton1Click:Connect(function()
                 table.insert(currentPath, parent)
                 currentParent = obj
-                -- update breadcrumb
                 local parts = {}
                 for _, p in ipairs(currentPath) do
                     table.insert(parts, p == game and "game" or p.Name)
@@ -366,37 +358,34 @@ local function renderList(parent)
                 breadLabel.Text = table.concat(parts, " › ")
                 renderList(obj)
             end)
-            -- Arrow indicator
             local arrow = Instance.new("TextLabel")
-            arrow.Size = UDim2.new(0, 12, 1, 0)
-            arrow.Position = UDim2.new(1, -14, 0, 0)
+            arrow.Size = UDim2.new(0, 10, 1, 0)
+            arrow.Position = UDim2.new(1, -12, 0, 0)
             arrow.BackgroundTransparency = 1
             arrow.Text = "›"
-            arrow.TextColor3 = Color3.fromRGB(100, 100, 140)
+            arrow.TextColor3 = Color3.fromRGB(90, 90, 130)
             arrow.Font = Enum.Font.GothamBold
-            arrow.TextSize = 16
+            arrow.TextSize = 14
             arrow.Parent = row
         end
 
-        -- Hover
         row.MouseEnter:Connect(function()
             if not selectedScripts[obj] then
-                TweenService:Create(row, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(38, 38, 55)}):Play()
+                TweenService:Create(row, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(35, 35, 52)}):Play()
             end
         end)
         row.MouseLeave:Connect(function()
             if not selectedScripts[obj] then
-                TweenService:Create(row, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(30, 30, 42)}):Play()
+                TweenService:Create(row, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(28, 28, 40)}):Play()
             end
         end)
     end
 
-    -- update canvas size
     listLayout:ApplyLayout()
-    listFrame.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 8)
+    listFrame.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 6)
 end
 
--- // BACK BUTTON //
+-- // BACK //
 backBtn.MouseButton1Click:Connect(function()
     if #currentPath == 0 then return end
     local prev = table.remove(currentPath)
@@ -414,37 +403,26 @@ backBtn.MouseButton1Click:Connect(function()
     renderList(prev)
 end)
 
--- // SELECT ALL SCRIPTS IN CURRENT VIEW //
+-- // SELECT ALL //
 selectAllBtn.MouseButton1Click:Connect(function()
     local children = currentParent == game and (function()
-        local t = {}
-        for _, r in ipairs(ROOTS) do table.insert(t, r.obj) end
-        return t
+        local t = {} for _, r in ipairs(ROOTS) do table.insert(t, r.obj) end return t
     end)() or currentParent:GetChildren()
 
     local allSelected = true
     for _, obj in ipairs(children) do
-        if isScript(obj) and not selectedScripts[obj] then
-            allSelected = false
-            break
-        end
+        if isScript(obj) and not selectedScripts[obj] then allSelected = false break end
     end
-
     for _, obj in ipairs(children) do
         if isScript(obj) then
-            if allSelected then
-                selectedScripts[obj] = nil
-            else
-                selectedScripts[obj] = true
-            end
+            selectedScripts[obj] = allSelected and nil or true
         end
     end
-
     updateSelectedLabel()
     renderList(currentParent)
 end)
 
--- // CLEAR SELECTION //
+-- // CLEAR //
 clearBtn.MouseButton1Click:Connect(function()
     selectedScripts = {}
     updateSelectedLabel()
@@ -456,23 +434,20 @@ downloadBtn.MouseButton1Click:Connect(function()
     local count = 0
     for _ in pairs(selectedScripts) do count = count + 1 end
     if count == 0 then
-        downloadBtn.Text = "⚠ Pilih dulu!"
-        task.wait(1.5)
-        downloadBtn.Text = "⬇ Download Selected"
+        statusLabel.Text = "⚠ Belum ada yang dipilih!"
         return
     end
 
-    local downloaded = 0
-    local failed = 0
+    statusLabel.Text = "⏳ Mendownload..."
+    local downloaded, failed = 0, 0
 
     for obj in pairs(selectedScripts) do
         pcall(function()
             local source = obj.Source
             if source and source ~= "" then
                 local ext = obj:IsA("ModuleScript") and ".module.lua" or ".lua"
-                local filename = obj.Parent and (obj.Parent.Name .. "_" .. obj.Name .. ext) or (obj.Name .. ext)
-                -- sanitize filename
-                filename = filename:gsub("[^%w%._%-]", "_")
+                local parentName = obj.Parent and obj.Parent.Name or "unknown"
+                local filename = (parentName .. "_" .. obj.Name .. ext):gsub("[^%w%._%-]", "_")
                 writefile(filename, source)
                 downloaded = downloaded + 1
             else
@@ -481,11 +456,14 @@ downloadBtn.MouseButton1Click:Connect(function()
         end)
     end
 
-    downloadBtn.Text = "✅ " .. downloaded .. " saved" .. (failed > 0 and (" | ⚠ " .. failed .. " locked") or "")
+    local msg = "✅ " .. downloaded .. " file tersimpan"
+    if failed > 0 then msg = msg .. "\n⚠ " .. failed .. " locked (skip)" end
+    statusLabel.Text = msg
+    downloadBtn.Text = "✅ Done!"
     task.wait(3)
     downloadBtn.Text = "⬇ Download Selected"
 end)
 
 -- // INIT //
 renderList(game)
-print("✅ Mini Dex loaded!")
+print("✅ Mini Dex (Landscape) loaded!")
