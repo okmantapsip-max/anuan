@@ -1,323 +1,473 @@
--- ========== SERVICES ==========
-local Players = game:GetService("Players")
+-- // BLOX Gank Server Monitor //
+-- Discord @bloxgank
 local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local StarterGui = game:GetService("StarterGui")
+local TextChatService = game:GetService("TextChatService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local LocalPlayer = Players.LocalPlayer
+local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
 
--- ========== KONFIGURASI ==========
+-- // CONFIGURATION //
 local WEBHOOK_URL = "https://discord.com/api/webhooks/1478468305122623690/Km_dxsVIXeKMntyleTSbIRUHKd5CK0lndYc6Uzjruhilo6S9zJobdDD4RS65Qm2-XuBA"
 local PROXY = "https://square-haze-a007.remediashop.workers.dev"
+local SCRIPT_ACTIVE = false
 
--- ========== LOAD IKAN DARI ITEMS ==========
-print("Loading fish data...")
-local FishDatabase = {}
-local fishNames = {}
+-- // DATABASE NAMA SECRET FISH //
+local SecretFishList = {
+    "Crystal Crab", "Orca", "Zombie Shark", "Zombie Megalodon", "Dead Zombie Shark",
+    "Blob Shark", "Ghost Shark", "Skeleton Narwhal", "Ghost Worm Fish", "Worm Fish",
+    "Megalodon", "1x1x1x1 Comet Shark", "Bloodmoon Whale", "Lochness Monster",
+    "Monster Shark", "Eerie Shark", "Great Whale", "Frostborn Shark", "Armored Shark",
+    "Scare", "Queen Crab", "King Crab", "Cryoshade Glider", "Panther Eel",
+    "Giant Squid", "Depthseeker Ray", "Robot Kraken", "Mosasaur Shark", "King Jelly",
+    "Bone Whale", "Elshark Gran Maja", "Elpirate Gran Maja", "Ancient Whale",
+    "Gladiator Shark", "Ancient Lochness Monster", "Talon Serpent", "Hacker Shark",
+    "ElRetro Gran Maja", "Strawberry Choc Megalodon", "Krampus Shark",
+    "Emerald Winter Whale", "Winter Frost Shark", "Icebreaker Whale", "Leviathan",
+    "Pirate Megalodon", "Viridis Lurker", "Cursed Kraken", "Ancient Magma Whale",
+    "Rainbow Comet Shark", "Love Nessie", "Broken Heart Nessie"
+}
 
-local Items = ReplicatedStorage:FindFirstChild("Items")
-if Items then
-    for _, moduleScript in pairs(Items:GetChildren()) do
-        if moduleScript:IsA("ModuleScript") then
-            local ok, data = pcall(require, moduleScript)
-            if ok and data and data.Data then
-                local name = data.Data.Name or moduleScript.Name
-                local tier = data.Data.Tier or 0
-                local icon = data.Data.Icon or ""
-                local assetId = tostring(icon):gsub("rbxassetid://", "")
+local FishImageCache = {}
 
-                FishDatabase[name] = {
-                    assetId = assetId,
-                    tier = tier,
-                    isSecret = (tier >= 7)
-                }
-
-                if tier >= 7 then
-                    table.insert(fishNames, name)
-                end
-            end
-        end
-    end
-end
-
-table.sort(fishNames)
-print("✅ Loaded " .. #fishNames .. " SECRET fish")
-
--- ========== SEND WEBHOOK ==========
-local function SendWebhook(fishName, playerName, userId)
-    local fishData = FishDatabase[fishName]
-    local fishImg = fishData and (PROXY .. "/asset/" .. fishData.assetId) or nil
-
+-- // WEBHOOK SENDER //
+local function SendWebhook(title, description, color, fields, imageUrl, thumbUrl)
+    local requestFunc = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
+    if not requestFunc then return end
     local embed = {
-        title = "🚨 SECRET FISH DETECTED!",
-        color = 16768768,
-        fields = {
-            { name = "Pemain", value = "**" .. playerName .. "**", inline = true },
-            { name = "Ikan",   value = "**" .. fishName .. "**",   inline = true },
-        },
-        footer = { text = "BLOX Gank Webhook | " .. os.date("%X") },
-        timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-        image = { url = fishImg or "" },
+        ["title"] = title,
+        ["description"] = description,
+        ["color"] = color,
+        ["fields"] = fields,
+        ["footer"] = {["text"] = "BLOX Gank Webhook | " .. os.date("%X")},
+        ["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%SZ")
     }
-
-    local requestFunc = (syn and syn.request) or (http and http.request) or http_request or request
-    if not requestFunc then return false end
-
-    local ok, res = pcall(function()
-        return requestFunc({
-            Url = WEBHOOK_URL,
-            Method = "POST",
-            Headers = { ["Content-Type"] = "application/json" },
-            Body = HttpService:JSONEncode({ embeds = { embed } })
-        })
-    end)
-    return ok and res and (res.Success or res.StatusCode == 204)
-end
-
--- ========== GUI ==========
-if LocalPlayer.PlayerGui:FindFirstChild("GankTestUI") then
-    LocalPlayer.PlayerGui:FindFirstChild("GankTestUI"):Destroy()
-end
-
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "GankTestUI"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = LocalPlayer.PlayerGui
-
-local Main = Instance.new("Frame")
-Main.Size = UDim2.new(0, 580, 0, 260)
-Main.Position = UDim2.new(0.5, -290, 0.5, -130)
-Main.BackgroundColor3 = Color3.fromRGB(18, 18, 28)
-Main.BorderSizePixel = 0
-Main.ClipsDescendants = false
-Main.Parent = ScreenGui
-Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 12)
-local mainStroke = Instance.new("UIStroke", Main)
-mainStroke.Color = Color3.fromRGB(255, 165, 0)
-mainStroke.Thickness = 2
-
--- Title Bar
-local TitleBar = Instance.new("Frame")
-TitleBar.Size = UDim2.new(1, 0, 0, 40)
-TitleBar.BackgroundColor3 = Color3.fromRGB(200, 120, 0)
-TitleBar.BorderSizePixel = 0
-TitleBar.Parent = Main
-Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 12)
-local fix = Instance.new("Frame", TitleBar)
-fix.Size = UDim2.new(1, 0, 0.5, 0)
-fix.Position = UDim2.new(0, 0, 0.5, 0)
-fix.BackgroundColor3 = Color3.fromRGB(200, 120, 0)
-fix.BorderSizePixel = 0
-
-local TitleLabel = Instance.new("TextLabel", TitleBar)
-TitleLabel.Size = UDim2.new(1, -55, 1, 0)
-TitleLabel.Position = UDim2.new(0, 14, 0, 0)
-TitleLabel.Text = "🦈  GANK WEBHOOK TESTER"
-TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-TitleLabel.BackgroundTransparency = 1
-TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.TextSize = 13
-TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-local CloseBtn = Instance.new("TextButton", TitleBar)
-CloseBtn.Size = UDim2.new(0, 30, 0, 30)
-CloseBtn.Position = UDim2.new(1, -36, 0.5, -15)
-CloseBtn.Text = "✕"
-CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-CloseBtn.Font = Enum.Font.GothamBold
-CloseBtn.TextSize = 13
-CloseBtn.BorderSizePixel = 0
-Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 6)
-CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
-
--- Draggable
-local dragging, dragStart, startPos
-TitleBar.InputBegan:Connect(function(i)
-    if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-        dragging = true; dragStart = i.Position; startPos = Main.Position
-    end
-end)
-TitleBar.InputChanged:Connect(function(i)
-    if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
-        local d = i.Position - dragStart
-        Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
-    end
-end)
-TitleBar.InputEnded:Connect(function(i)
-    if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-        dragging = false
-    end
-end)
-
--- ===== KOLOM KIRI — Fish Selector =====
-local leftCol = Instance.new("Frame", Main)
-leftCol.Size = UDim2.new(0, 270, 0, 210)
-leftCol.Position = UDim2.new(0, 15, 0, 46)
-leftCol.BackgroundTransparency = 1
-leftCol.BorderSizePixel = 0
-
-local lblFish = Instance.new("TextLabel", leftCol)
-lblFish.Size = UDim2.new(1, 0, 0, 18)
-lblFish.Position = UDim2.new(0, 0, 0, 2)
-lblFish.Text = "🦈 Pilih Ikan Secret (" .. #fishNames .. " ikan)"
-lblFish.TextColor3 = Color3.fromRGB(255, 180, 80)
-lblFish.BackgroundTransparency = 1
-lblFish.Font = Enum.Font.Gotham
-lblFish.TextSize = 11
-lblFish.TextXAlignment = Enum.TextXAlignment.Left
-
-local fishDisplay = Instance.new("TextButton", leftCol)
-fishDisplay.Size = UDim2.new(1, 0, 0, 34)
-fishDisplay.Position = UDim2.new(0, 0, 0, 22)
-fishDisplay.Text = (#fishNames > 0 and fishNames[1] or "No fish found") .. "  ▾"
-fishDisplay.TextColor3 = Color3.fromRGB(255, 255, 255)
-fishDisplay.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
-fishDisplay.Font = Enum.Font.Gotham
-fishDisplay.TextSize = 11
-fishDisplay.BorderSizePixel = 0
-Instance.new("UICorner", fishDisplay).CornerRadius = UDim.new(0, 8)
-local fishStroke = Instance.new("UIStroke", fishDisplay)
-fishStroke.Color = Color3.fromRGB(120, 80, 20)
-fishStroke.Thickness = 1
-
-local selectedFish = #fishNames > 0 and fishNames[1] or ""
-
-local Dropdown = Instance.new("Frame", leftCol)
-Dropdown.Size = UDim2.new(1, 0, 0, 155)
-Dropdown.Position = UDim2.new(0, 0, 0, 58)
-Dropdown.BackgroundColor3 = Color3.fromRGB(22, 22, 36)
-Dropdown.BorderSizePixel = 0
-Dropdown.Visible = false
-Dropdown.ZIndex = 20
-Instance.new("UICorner", Dropdown).CornerRadius = UDim.new(0, 8)
-local dropStroke = Instance.new("UIStroke", Dropdown)
-dropStroke.Color = Color3.fromRGB(200, 120, 0)
-dropStroke.Thickness = 1
-
-local ScrollFrame = Instance.new("ScrollingFrame", Dropdown)
-ScrollFrame.Size = UDim2.new(1, -6, 1, -6)
-ScrollFrame.Position = UDim2.new(0, 3, 0, 3)
-ScrollFrame.BackgroundTransparency = 1
-ScrollFrame.ScrollBarThickness = 4
-ScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(200, 120, 0)
-ScrollFrame.BorderSizePixel = 0
-ScrollFrame.ZIndex = 20
-
-local ListLayout = Instance.new("UIListLayout", ScrollFrame)
-ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-ListLayout.Padding = UDim.new(0, 2)
-
-for i, name in ipairs(fishNames) do
-    local btn = Instance.new("TextButton", ScrollFrame)
-    btn.Size = UDim2.new(1, -6, 0, 28)
-    btn.Text = name
-    btn.TextColor3 = Color3.fromRGB(220, 220, 220)
-    btn.BackgroundColor3 = Color3.fromRGB(35, 35, 55)
-    btn.Font = Enum.Font.Gotham
-    btn.TextSize = 11
-    btn.BorderSizePixel = 0
-    btn.ZIndex = 21
-    btn.LayoutOrder = i
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-    btn.MouseButton1Click:Connect(function()
-        selectedFish = name
-        fishDisplay.Text = name .. "  ▾"
-        Dropdown.Visible = false
-    end)
-end
-ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, #fishNames * 30)
-
-fishDisplay.MouseButton1Click:Connect(function()
-    Dropdown.Visible = not Dropdown.Visible
-end)
-
--- ===== KOLOM KANAN =====
-local rightCol = Instance.new("Frame", Main)
-rightCol.Size = UDim2.new(0, 270, 0, 210)
-rightCol.Position = UDim2.new(0, 295, 0, 46)
-rightCol.BackgroundTransparency = 1
-rightCol.BorderSizePixel = 0
-
-local function makeRightLabel(text, posY)
-    local l = Instance.new("TextLabel", rightCol)
-    l.Size = UDim2.new(1, 0, 0, 18)
-    l.Position = UDim2.new(0, 0, 0, posY)
-    l.Text = text
-    l.TextColor3 = Color3.fromRGB(255, 180, 80)
-    l.BackgroundTransparency = 1
-    l.Font = Enum.Font.Gotham
-    l.TextSize = 11
-    l.TextXAlignment = Enum.TextXAlignment.Left
-end
-
-local function makeRightInput(posY, default)
-    local box = Instance.new("TextBox", rightCol)
-    box.Size = UDim2.new(1, 0, 0, 32)
-    box.Position = UDim2.new(0, 0, 0, posY)
-    box.Text = default or ""
-    box.TextColor3 = Color3.fromRGB(255, 255, 255)
-    box.PlaceholderColor3 = Color3.fromRGB(120, 120, 150)
-    box.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
-    box.Font = Enum.Font.Gotham
-    box.TextSize = 13
-    box.BorderSizePixel = 0
-    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 8)
-    local s = Instance.new("UIStroke", box)
-    s.Color = Color3.fromRGB(120, 80, 20); s.Thickness = 1
-    return box
-end
-
-makeRightLabel("👤 Player Name (target)", 2)
-local inputPlayer = makeRightInput(20, LocalPlayer.Name)
-
-makeRightLabel("🆔 User ID (target)", 60)
-local inputUserId = makeRightInput(78, tostring(LocalPlayer.UserId))
-
-local StatusLabel = Instance.new("TextLabel", rightCol)
-StatusLabel.Size = UDim2.new(1, 0, 0, 18)
-StatusLabel.Position = UDim2.new(0, 0, 0, 120)
-StatusLabel.Text = "🟢 Ready to send..."
-StatusLabel.TextColor3 = Color3.fromRGB(150, 150, 190)
-StatusLabel.BackgroundTransparency = 1
-StatusLabel.Font = Enum.Font.Gotham
-StatusLabel.TextSize = 11
-StatusLabel.TextWrapped = true
-
-local SendBtn = Instance.new("TextButton", rightCol)
-SendBtn.Size = UDim2.new(1, 0, 0, 44)
-SendBtn.Position = UDim2.new(0, 0, 0, 144)
-SendBtn.Text = "🚀  SEND TEST WEBHOOK"
-SendBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-SendBtn.BackgroundColor3 = Color3.fromRGB(200, 120, 0)
-SendBtn.Font = Enum.Font.GothamBold
-SendBtn.TextSize = 14
-SendBtn.BorderSizePixel = 0
-Instance.new("UICorner", SendBtn).CornerRadius = UDim.new(0, 10)
-
-SendBtn.MouseButton1Click:Connect(function()
+    if imageUrl then embed["image"] = {["url"] = imageUrl} end
+    if thumbUrl then embed["thumbnail"] = {["url"] = thumbUrl} end
     task.spawn(function()
-        SendBtn.Active = false
-        SendBtn.BackgroundColor3 = Color3.fromRGB(120, 70, 0)
-        StatusLabel.Text = "⏳ Sending..."
-        StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
-        Dropdown.Visible = false
-
-        local playerName = inputPlayer.Text ~= "" and inputPlayer.Text or LocalPlayer.Name
-        local userId = tonumber(inputUserId.Text) or LocalPlayer.UserId
-
-        local success = SendWebhook(selectedFish, playerName, userId)
-
-        if success then
-            StatusLabel.Text = "✅ Sent! Check Discord."
-            StatusLabel.TextColor3 = Color3.fromRGB(80, 220, 120)
-        else
-            StatusLabel.Text = "❌ Failed to send!"
-            StatusLabel.TextColor3 = Color3.fromRGB(220, 80, 80)
-        end
-
-        task.wait(1)
-        SendBtn.Active = true
-        SendBtn.BackgroundColor3 = Color3.fromRGB(200, 120, 0)
+        pcall(function()
+            requestFunc({
+                Url = WEBHOOK_URL,
+                Method = "POST",
+                Headers = {["Content-Type"] = "application/json"},
+                Body = HttpService:JSONEncode({["embeds"] = {embed}})
+            })
+        end)
     end)
-end)
+end
 
-print("✅ Gank Webhook Tester GUI loaded!")
+-- // STRIP HTML TAGS //
+local function StripTags(str)
+    return string.gsub(str, "<[^>]+>", "")
+end
+
+-- // CEK SECRET FISH + SUPPORT MUTASI //
+local function FindSecretFish(fishName)
+    local lower = string.lower(fishName)
+    for _, baseName in ipairs(SecretFishList) do
+        if string.find(lower, string.lower(baseName), 1, true) then
+            local s = string.find(lower, string.lower(baseName), 1, true)
+            local mutasi = nil
+            if s and s > 1 then
+                mutasi = fishName:sub(1, s - 1):match("^%s*(.-)%s*$")
+                if mutasi == "" then mutasi = nil end
+            end
+            return baseName, mutasi
+        end
+    end
+    return nil, nil
+end
+
+-- // AMBIL IMAGE DARI TOOL //
+local function GetFishImageId(item)
+    for _, desc in ipairs(item:GetDescendants()) do
+        local ok, val = pcall(function()
+            if desc:IsA("SpecialMesh") then return desc.TextureId
+            elseif desc:IsA("Decal") or desc:IsA("Texture") then return desc.Texture
+            elseif desc:IsA("ImageLabel") or desc:IsA("ImageButton") then return desc.Image
+            end
+            return nil
+        end)
+        if ok and val and val ~= "" and val ~= "rbxasset://" then
+            local id = tostring(val):match("%d+")
+            if id then return id end
+        end
+    end
+    return nil
+end
+
+-- // PARSE CHAT SERVER //
+local function ParseChat(rawMsg)
+    local msg = StripTags(rawMsg)
+    msg = string.gsub(msg, "^%[Server%]:%s*", "")
+    local playerName, fishFull, weight = string.match(msg, "^(.-) obtained an? (.-) %(([%d%.%a]+ ?kg)%)")
+    if not playerName then
+        playerName, fishFull = string.match(msg, "^(.-) obtained an? (.+)")
+        weight = "N/A"
+    end
+    if not playerName or not fishFull then return nil end
+    playerName = playerName:match("%[%a+%]:%s*(.+)") or playerName
+    playerName = playerName:match("^%s*(.-)%s*$") or playerName
+    weight = weight:match("^%s*(.-)%s*$") or weight
+    fishFull = fishFull:match("^(.-)%s+with a 1 in") or fishFull
+    fishFull = fishFull:match("^(.-)%s*[!%.]?$") or fishFull
+    fishFull = fishFull:match("^%s*(.-)%s*$") or fishFull
+    return { player = playerName, fish = fishFull, weight = weight }
+end
+
+-- // PROSES PESAN CHAT SERVER //
+local function CheckAndSend(rawMsg)
+    if not SCRIPT_ACTIVE then return end
+    if not string.find(string.lower(rawMsg), "obtained") then return end
+    local data = ParseChat(rawMsg)
+    if not data then return end
+    local baseName, mutasi = FindSecretFish(data.fish)
+    if not baseName then return end
+    local targetPlayer = Players:FindFirstChild(data.player)
+    local avatarUrl = targetPlayer and (PROXY .. "/avatar/" .. tostring(targetPlayer.UserId)) or nil
+    local imageUrl = FishImageCache[baseName] and (PROXY .. "/asset/" .. FishImageCache[baseName]) or nil
+    local fishLabel = "**" .. data.fish .. "**"
+    if mutasi then fishLabel = "**" .. data.fish .. "** *(mutasi: " .. baseName .. ")*" end
+    SendWebhook("🚨 SECRET FISH DETECTED!", nil, 1752220, {
+        {["name"] = "Pemain", ["value"] = "**" .. data.player .. "**", ["inline"] = true},
+        {["name"] = "Ikan",   ["value"] = fishLabel,                   ["inline"] = true},
+        {["name"] = "Berat",  ["value"] = data.weight,                 ["inline"] = true},
+    }, imageUrl, avatarUrl)
+end
+
+-- // BACKPACK MONITOR //
+local function WatchBackpack(player, bp)
+    bp.ChildAdded:Connect(function(item)
+        task.wait(0.1)
+        local baseName, _ = FindSecretFish(item.Name)
+        if baseName and not FishImageCache[baseName] then
+            local imgId = GetFishImageId(item)
+            if imgId then FishImageCache[baseName] = imgId end
+        end
+    end)
+end
+
+local function WatchForFish(player)
+    local bp = player:FindFirstChild("Backpack")
+    if bp then WatchBackpack(player, bp) end
+    player.CharacterAdded:Connect(function()
+        local newBp = player:WaitForChild("Backpack", 15)
+        if newBp then WatchBackpack(player, newBp) end
+    end)
+end
+
+-- // HOOK CHAT SERVER //
+local function HookChat()
+    if TextChatService then
+        TextChatService.MessageReceived:Connect(function(msg)
+            if msg.TextSource == nil then CheckAndSend(msg.Text or "") end
+        end)
+    end
+    local chatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+    if chatEvents then
+        local onMessage = chatEvents:FindFirstChild("OnMessageDoneFiltering")
+        if onMessage then
+            onMessage.OnClientEvent:Connect(function(d)
+                if d and d.Message then CheckAndSend(d.Message) end
+            end)
+        end
+    end
+end
+
+-- // STARTUP WEBHOOK //
+local function StartMonitoring()
+    local allPlayers = Players:GetPlayers()
+    local names = {}
+    for _, p in ipairs(allPlayers) do table.insert(names, p.Name) end
+    SendWebhook("🚀 WEBHOOK STARTED", nil, 65280, {
+        {["name"] = "Host",          ["value"] = "👤 " .. Players.LocalPlayer.Name,            ["inline"] = true},
+        {["name"] = "Total Player",  ["value"] = "👥 " .. tostring(#allPlayers),                ["inline"] = true},
+        {["name"] = "Daftar Player", ["value"] = "```\n" .. table.concat(names, ", ") .. "```", ["inline"] = false}
+    })
+    HookChat()
+    for _, p in ipairs(Players:GetPlayers()) do WatchForFish(p) end
+    Players.PlayerAdded:Connect(function(player)
+        if not SCRIPT_ACTIVE then return end
+        task.spawn(function()
+            task.wait(1)
+            local avatarUrl = PROXY .. "/avatar/" .. tostring(player.UserId)
+            SendWebhook("✅ PLAYER JOINED SERVER", nil, 65280, {
+                {["name"] = "Username", ["value"] = "**" .. player.Name .. "**",              ["inline"] = true},
+                {["name"] = "Total",    ["value"] = "👥 " .. tostring(#Players:GetPlayers()), ["inline"] = true}
+            }, nil, avatarUrl)
+        end)
+        WatchForFish(player)
+    end)
+    Players.PlayerRemoving:Connect(function(player)
+        if not SCRIPT_ACTIVE then return end
+        task.spawn(function()
+            local pName = player.Name
+            local pId = player.UserId
+            local avatarUrl = PROXY .. "/avatar/" .. tostring(pId)
+            SendWebhook("👋 PLAYER LEFT SERVER", nil, 16729344, {
+                {["name"] = "Username", ["value"] = "**" .. pName .. "**",                        ["inline"] = true},
+                {["name"] = "Total",    ["value"] = "👥 " .. tostring(#Players:GetPlayers() - 1), ["inline"] = true}
+            }, nil, avatarUrl)
+        end)
+    end)
+end
+
+-- // SEND TEST WEBHOOK //
+local function SendTestWebhook(testBtn)
+    local dummyFishList = {"Leviathan", "Cursed Kraken", "Ancient Magma Whale", "Megalodon", "Bloodmoon Whale"}
+    local dummyFish = dummyFishList[math.random(1, #dummyFishList)]
+    local dummyWeight = tostring(math.random(100, 9999) / 10) .. " kg"
+    local dummyPlayer = Players.LocalPlayer.Name
+    local avatarUrl = PROXY .. "/avatar/" .. tostring(Players.LocalPlayer.UserId)
+
+    SendWebhook("🧪 TEST — SECRET FISH DETECTED!", "```ini\n[ INI ADALAH PESAN TEST ]\n```", 16776960, {
+        {["name"] = "Pemain", ["value"] = "**" .. dummyPlayer .. "**",  ["inline"] = true},
+        {["name"] = "Ikan",   ["value"] = "**" .. dummyFish .. "**",    ["inline"] = true},
+        {["name"] = "Berat",  ["value"] = dummyWeight,                  ["inline"] = true},
+        {["name"] = "Status", ["value"] = "✅ Webhook berfungsi normal", ["inline"] = false},
+    }, nil, avatarUrl)
+
+    -- Feedback di tombol
+    testBtn.Text = "📨 Terkirim!"
+    testBtn.BackgroundColor3 = Color3.fromRGB(30, 100, 200)
+    task.wait(2.5)
+    testBtn.Text = "🧪 TEST WEBHOOK"
+    testBtn.BackgroundColor3 = Color3.fromRGB(50, 80, 160)
+end
+
+-- // UI //
+local function CreateUI()
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "BloxGankUI"
+    gui.ResetOnSpawn = false
+    gui.Parent = (gethui and gethui()) or CoreGui
+
+    -- Main Frame
+    local frame = Instance.new("Frame")
+    frame.Name = "Main"
+    frame.Size = UDim2.new(0, 300, 0, 200)
+    frame.Position = UDim2.new(0.5, -150, 0.5, -100)
+    frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    frame.BorderSizePixel = 0
+    frame.Parent = gui
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+
+    -- Top bar
+    local topBar = Instance.new("Frame")
+    topBar.Size = UDim2.new(1, 0, 0, 36)
+    topBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    topBar.BorderSizePixel = 0
+    topBar.Parent = frame
+    Instance.new("UICorner", topBar).CornerRadius = UDim.new(0, 8)
+
+    local topBarFix = Instance.new("Frame")
+    topBarFix.Size = UDim2.new(1, 0, 0, 8)
+    topBarFix.Position = UDim2.new(0, 0, 1, -8)
+    topBarFix.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    topBarFix.BorderSizePixel = 0
+    topBarFix.Parent = topBar
+
+    -- Title
+    local title = Instance.new("TextLabel")
+    title.Text = "🎣 BLOX Gank Monitor"
+    title.Size = UDim2.new(1, -80, 1, 0)
+    title.Position = UDim2.new(0, 10, 0, 0)
+    title.BackgroundTransparency = 1
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 13
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = topBar
+
+    -- Minimize button
+    local minBtn = Instance.new("TextButton")
+    minBtn.Text = "—"
+    minBtn.Size = UDim2.new(0, 28, 0, 22)
+    minBtn.Position = UDim2.new(1, -58, 0.5, -11)
+    minBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    minBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
+    minBtn.Font = Enum.Font.GothamBold
+    minBtn.TextSize = 12
+    minBtn.BorderSizePixel = 0
+    minBtn.Parent = topBar
+    Instance.new("UICorner", minBtn).CornerRadius = UDim.new(0, 4)
+
+    -- Close button
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Text = "✕"
+    closeBtn.Size = UDim2.new(0, 28, 0, 22)
+    closeBtn.Position = UDim2.new(1, -28, 0.5, -11)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.TextSize = 12
+    closeBtn.BorderSizePixel = 0
+    closeBtn.Parent = topBar
+    Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 4)
+
+    -- Minimize logic
+    local isMinimized = false
+    local fullSize = UDim2.new(0, 300, 0, 200)
+    local miniSize = UDim2.new(0, 300, 0, 36)
+
+    minBtn.MouseButton1Click:Connect(function()
+        isMinimized = not isMinimized
+        if isMinimized then
+            TweenService:Create(frame, TweenInfo.new(0.2), {Size = miniSize}):Play()
+            minBtn.Text = "□"
+        else
+            TweenService:Create(frame, TweenInfo.new(0.2), {Size = fullSize}):Play()
+            minBtn.Text = "—"
+        end
+    end)
+
+    -- Close logic
+    closeBtn.MouseButton1Click:Connect(function()
+        TweenService:Create(frame, TweenInfo.new(0.15), {
+            Size = UDim2.new(0, 300, 0, 0),
+            BackgroundTransparency = 1
+        }):Play()
+        task.wait(0.2)
+        gui:Destroy()
+    end)
+
+    -- Hover effects
+    minBtn.MouseEnter:Connect(function()
+        TweenService:Create(minBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(80, 80, 80)}):Play()
+    end)
+    minBtn.MouseLeave:Connect(function()
+        TweenService:Create(minBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(60, 60, 60)}):Play()
+    end)
+    closeBtn.MouseEnter:Connect(function()
+        TweenService:Create(closeBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(230, 70, 70)}):Play()
+    end)
+    closeBtn.MouseLeave:Connect(function()
+        TweenService:Create(closeBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(200, 50, 50)}):Play()
+    end)
+
+    -- Draggable
+    local dragging, dragStart, startPos
+    topBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+        end
+    end)
+    topBar.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+    game:GetService("UserInputService").InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(
+                startPos.X.Scale, startPos.X.Offset + delta.X,
+                startPos.Y.Scale, startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+
+    -- Status dot + label
+    local statusDot = Instance.new("Frame")
+    statusDot.Size = UDim2.new(0, 8, 0, 8)
+    statusDot.Position = UDim2.new(0, 16, 0, 50)
+    statusDot.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+    statusDot.BorderSizePixel = 0
+    statusDot.Parent = frame
+    Instance.new("UICorner", statusDot).CornerRadius = UDim.new(1, 0)
+
+    local statusLabel = Instance.new("TextLabel")
+    statusLabel.Text = "Webhook terpasang — Klik START"
+    statusLabel.Size = UDim2.new(1, -40, 0, 20)
+    statusLabel.Position = UDim2.new(0, 30, 0, 42)
+    statusLabel.BackgroundTransparency = 1
+    statusLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+    statusLabel.Font = Enum.Font.Gotham
+    statusLabel.TextSize = 10
+    statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+    statusLabel.Parent = frame
+
+    -- Webhook URL info label
+    local webhookInfo = Instance.new("TextLabel")
+    webhookInfo.Text = "🔗 Webhook: ...Qm2-XuBA"
+    webhookInfo.Size = UDim2.new(1, -24, 0, 20)
+    webhookInfo.Position = UDim2.new(0, 12, 0, 66)
+    webhookInfo.BackgroundTransparency = 1
+    webhookInfo.TextColor3 = Color3.fromRGB(100, 200, 120)
+    webhookInfo.Font = Enum.Font.Gotham
+    webhookInfo.TextSize = 10
+    webhookInfo.TextXAlignment = Enum.TextXAlignment.Left
+    webhookInfo.Parent = frame
+
+    -- TEST WEBHOOK button (di atas START)
+    local testBtn = Instance.new("TextButton")
+    testBtn.Text = "🧪 TEST WEBHOOK"
+    testBtn.Size = UDim2.new(1, -24, 0, 34)
+    testBtn.Position = UDim2.new(0, 12, 0, 96)
+    testBtn.BackgroundColor3 = Color3.fromRGB(50, 80, 160)
+    testBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    testBtn.Font = Enum.Font.GothamBold
+    testBtn.TextSize = 12
+    testBtn.BorderSizePixel = 0
+    testBtn.Parent = frame
+    Instance.new("UICorner", testBtn).CornerRadius = UDim.new(0, 6)
+
+    testBtn.MouseButton1Click:Connect(function()
+        task.spawn(function()
+            SendTestWebhook(testBtn)
+        end)
+    end)
+    testBtn.MouseEnter:Connect(function()
+        TweenService:Create(testBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(70, 110, 210)}):Play()
+    end)
+    testBtn.MouseLeave:Connect(function()
+        TweenService:Create(testBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(50, 80, 160)}):Play()
+    end)
+
+    -- START MONITORING button
+    local startBtn = Instance.new("TextButton")
+    startBtn.Text = "▶  START MONITORING"
+    startBtn.Size = UDim2.new(1, -24, 0, 38)
+    startBtn.Position = UDim2.new(0, 12, 0, 150)
+    startBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 100)
+    startBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    startBtn.Font = Enum.Font.GothamBold
+    startBtn.TextSize = 13
+    startBtn.BorderSizePixel = 0
+    startBtn.Parent = frame
+    Instance.new("UICorner", startBtn).CornerRadius = UDim.new(0, 6)
+
+    -- Stroke border
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(50, 50, 50)
+    stroke.Thickness = 1
+    stroke.Parent = frame
+
+    startBtn.MouseButton1Click:Connect(function()
+        if SCRIPT_ACTIVE then return end
+        SCRIPT_ACTIVE = true
+        statusDot.BackgroundColor3 = Color3.fromRGB(0, 220, 100)
+        statusLabel.Text = "Aktif — Monitoring berjalan..."
+        statusLabel.TextColor3 = Color3.fromRGB(0, 220, 100)
+        startBtn.Text = "✅  MONITORING AKTIF"
+        startBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        StartMonitoring()
+    end)
+
+    startBtn.MouseEnter:Connect(function()
+        if not SCRIPT_ACTIVE then
+            TweenService:Create(startBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(0, 210, 120)}):Play()
+        end
+    end)
+    startBtn.MouseLeave:Connect(function()
+        if not SCRIPT_ACTIVE then
+            TweenService:Create(startBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(0, 180, 100)}):Play()
+        end
+    end)
+end
+
+-- // INITIALIZE //
+CreateUI()
