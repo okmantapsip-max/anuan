@@ -79,22 +79,80 @@ local function FindSecretFish(fishName)
     return nil, nil
 end
 
--- // AMBIL IMAGE DARI TOOL //
+-- // EKSTRAK ASSET ID DARI URL //
+local function ExtractId(val)
+    if not val or val == "" then return nil end
+    local s = tostring(val)
+    -- rbxassetid://123456
+    local id = s:match("rbxassetid://(%d+)")
+    if id then return id end
+    -- https://assetdelivery.roblox.com/...id=123456
+    id = s:match("[?&]id=(%d+)")
+    if id then return id end
+    -- angka murni
+    id = s:match("^(%d+)$")
+    if id then return id end
+    -- akhir string angka
+    id = s:match("(%d+)$")
+    if id and #id > 3 then return id end
+    return nil
+end
+
+-- // AMBIL IMAGE DARI TOOL (VERSI LENGKAP) //
 local function GetFishImageId(item)
     for _, desc in ipairs(item:GetDescendants()) do
-        local ok, val = pcall(function()
-            if desc:IsA("SpecialMesh") then return desc.TextureId
-            elseif desc:IsA("Decal") or desc:IsA("Texture") then return desc.Texture
-            elseif desc:IsA("ImageLabel") or desc:IsA("ImageButton") then return desc.Image
+        pcall(function()
+            -- ImageLabel / ImageButton
+            if desc:IsA("ImageLabel") or desc:IsA("ImageButton") then
+                local id = ExtractId(desc.Image)
+                if id then FishImageCache["__temp"] = id end
+
+            -- Decal / Texture
+            elseif desc:IsA("Decal") or desc:IsA("Texture") then
+                local id = ExtractId(desc.Texture)
+                if id then FishImageCache["__temp"] = id end
+
+            -- SpecialMesh
+            elseif desc:IsA("SpecialMesh") then
+                local id = ExtractId(desc.TextureId)
+                if id then FishImageCache["__temp"] = id end
+
+            -- SurfaceAppearance (ColorMap = albedo texture)
+            elseif desc:IsA("SurfaceAppearance") then
+                local id = ExtractId(desc.ColorMap)
+                if id then FishImageCache["__temp"] = id end
+
+            -- MeshPart (TextureID)
+            elseif desc:IsA("MeshPart") then
+                local id = ExtractId(desc.TextureID)
+                if id then FishImageCache["__temp"] = id end
+
+            -- SpecialMesh di dalam MeshPart
+            elseif desc:IsA("FileMesh") then
+                local id = ExtractId(desc.TextureId)
+                if id then FishImageCache["__temp"] = id end
             end
-            return nil
         end)
-        if ok and val and val ~= "" and val ~= "rbxasset://" then
-            local id = tostring(val):match("%d+")
-            if id then return id end
+
+        if FishImageCache["__temp"] then
+            local result = FishImageCache["__temp"]
+            FishImageCache["__temp"] = nil
+            return result
         end
     end
-    return nil
+
+    -- Fallback: cek properti langsung di item (Tool/Model)
+    local fallbackId = nil
+    pcall(function()
+        -- Beberapa game simpan image di attribute
+        local attrs = item:GetAttributes()
+        for _, v in pairs(attrs) do
+            local id = ExtractId(tostring(v))
+            if id then fallbackId = id break end
+        end
+    end)
+
+    return fallbackId
 end
 
 -- // PARSE CHAT SERVER //
@@ -136,15 +194,27 @@ local function CheckAndSend(rawMsg)
     }, imageUrl, avatarUrl)
 end
 
+-- // CACHE ITEM DARI BACKPACK //
+local function TryCacheItem(item)
+    task.wait(0.1)
+    local baseName, _ = FindSecretFish(item.Name)
+    if baseName and not FishImageCache[baseName] then
+        local imgId = GetFishImageId(item)
+        if imgId then
+            FishImageCache[baseName] = imgId
+        end
+    end
+end
+
 -- // BACKPACK MONITOR //
 local function WatchBackpack(player, bp)
+    -- Cache semua item yang sudah ada di backpack sekarang
+    for _, item in ipairs(bp:GetChildren()) do
+        task.spawn(TryCacheItem, item)
+    end
+    -- Monitor item baru yang masuk
     bp.ChildAdded:Connect(function(item)
-        task.wait(0.1)
-        local baseName, _ = FindSecretFish(item.Name)
-        if baseName and not FishImageCache[baseName] then
-            local imgId = GetFishImageId(item)
-            if imgId then FishImageCache[baseName] = imgId end
-        end
+        task.spawn(TryCacheItem, item)
     end)
 end
 
@@ -220,15 +290,15 @@ local function SendTestWebhook(testBtn)
     local dummyWeight = tostring(math.random(100, 9999) / 10) .. " kg"
     local dummyPlayer = Players.LocalPlayer.Name
     local avatarUrl = PROXY .. "/avatar/" .. tostring(Players.LocalPlayer.UserId)
+    local cachedImg = FishImageCache[dummyFish] and (PROXY .. "/asset/" .. FishImageCache[dummyFish]) or nil
 
     SendWebhook("🧪 TEST — SECRET FISH DETECTED!", "```ini\n[ INI ADALAH PESAN TEST ]\n```", 16776960, {
         {["name"] = "Pemain", ["value"] = "**" .. dummyPlayer .. "**",  ["inline"] = true},
         {["name"] = "Ikan",   ["value"] = "**" .. dummyFish .. "**",    ["inline"] = true},
         {["name"] = "Berat",  ["value"] = dummyWeight,                  ["inline"] = true},
-        {["name"] = "Status", ["value"] = "✅ Webhook berfungsi normal", ["inline"] = false},
-    }, nil, avatarUrl)
+        {["name"] = "Status", ["value"] = cachedImg and "✅ Gambar ditemukan di cache" or "⚠️ Gambar belum di-cache (buka backpack dulu)", ["inline"] = false},
+    }, cachedImg, avatarUrl)
 
-    -- Feedback di tombol
     testBtn.Text = "📨 Terkirim!"
     testBtn.BackgroundColor3 = Color3.fromRGB(30, 100, 200)
     task.wait(2.5)
@@ -243,7 +313,6 @@ local function CreateUI()
     gui.ResetOnSpawn = false
     gui.Parent = (gethui and gethui()) or CoreGui
 
-    -- Main Frame
     local frame = Instance.new("Frame")
     frame.Name = "Main"
     frame.Size = UDim2.new(0, 300, 0, 200)
@@ -253,7 +322,6 @@ local function CreateUI()
     frame.Parent = gui
     Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
 
-    -- Top bar
     local topBar = Instance.new("Frame")
     topBar.Size = UDim2.new(1, 0, 0, 36)
     topBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
@@ -268,7 +336,6 @@ local function CreateUI()
     topBarFix.BorderSizePixel = 0
     topBarFix.Parent = topBar
 
-    -- Title
     local title = Instance.new("TextLabel")
     title.Text = "🎣 BLOX Gank Monitor"
     title.Size = UDim2.new(1, -80, 1, 0)
@@ -280,7 +347,6 @@ local function CreateUI()
     title.TextXAlignment = Enum.TextXAlignment.Left
     title.Parent = topBar
 
-    -- Minimize button
     local minBtn = Instance.new("TextButton")
     minBtn.Text = "—"
     minBtn.Size = UDim2.new(0, 28, 0, 22)
@@ -293,7 +359,6 @@ local function CreateUI()
     minBtn.Parent = topBar
     Instance.new("UICorner", minBtn).CornerRadius = UDim.new(0, 4)
 
-    -- Close button
     local closeBtn = Instance.new("TextButton")
     closeBtn.Text = "✕"
     closeBtn.Size = UDim2.new(0, 28, 0, 22)
@@ -306,7 +371,6 @@ local function CreateUI()
     closeBtn.Parent = topBar
     Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 4)
 
-    -- Minimize logic
     local isMinimized = false
     local fullSize = UDim2.new(0, 300, 0, 200)
     local miniSize = UDim2.new(0, 300, 0, 36)
@@ -322,55 +386,33 @@ local function CreateUI()
         end
     end)
 
-    -- Close logic
     closeBtn.MouseButton1Click:Connect(function()
-        TweenService:Create(frame, TweenInfo.new(0.15), {
-            Size = UDim2.new(0, 300, 0, 0),
-            BackgroundTransparency = 1
-        }):Play()
+        TweenService:Create(frame, TweenInfo.new(0.15), {Size = UDim2.new(0,300,0,0), BackgroundTransparency = 1}):Play()
         task.wait(0.2)
         gui:Destroy()
     end)
 
-    -- Hover effects
-    minBtn.MouseEnter:Connect(function()
-        TweenService:Create(minBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(80, 80, 80)}):Play()
-    end)
-    minBtn.MouseLeave:Connect(function()
-        TweenService:Create(minBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(60, 60, 60)}):Play()
-    end)
-    closeBtn.MouseEnter:Connect(function()
-        TweenService:Create(closeBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(230, 70, 70)}):Play()
-    end)
-    closeBtn.MouseLeave:Connect(function()
-        TweenService:Create(closeBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(200, 50, 50)}):Play()
-    end)
+    minBtn.MouseEnter:Connect(function() TweenService:Create(minBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(80,80,80)}):Play() end)
+    minBtn.MouseLeave:Connect(function() TweenService:Create(minBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(60,60,60)}):Play() end)
+    closeBtn.MouseEnter:Connect(function() TweenService:Create(closeBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(230,70,70)}):Play() end)
+    closeBtn.MouseLeave:Connect(function() TweenService:Create(closeBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(200,50,50)}):Play() end)
 
-    -- Draggable
     local dragging, dragStart, startPos
     topBar.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = input.Position
-            startPos = frame.Position
+            dragging = true; dragStart = input.Position; startPos = frame.Position
         end
     end)
     topBar.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
-        end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
     end)
     game:GetService("UserInputService").InputChanged:Connect(function(input)
         if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
             local delta = input.Position - dragStart
-            frame.Position = UDim2.new(
-                startPos.X.Scale, startPos.X.Offset + delta.X,
-                startPos.Y.Scale, startPos.Y.Offset + delta.Y
-            )
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
         end
     end)
 
-    -- Status dot + label
     local statusDot = Instance.new("Frame")
     statusDot.Size = UDim2.new(0, 8, 0, 8)
     statusDot.Position = UDim2.new(0, 16, 0, 50)
@@ -390,7 +432,6 @@ local function CreateUI()
     statusLabel.TextXAlignment = Enum.TextXAlignment.Left
     statusLabel.Parent = frame
 
-    -- Webhook URL info label
     local webhookInfo = Instance.new("TextLabel")
     webhookInfo.Text = "🔗 Webhook: ...Qm2-XuBA"
     webhookInfo.Size = UDim2.new(1, -24, 0, 20)
@@ -402,7 +443,6 @@ local function CreateUI()
     webhookInfo.TextXAlignment = Enum.TextXAlignment.Left
     webhookInfo.Parent = frame
 
-    -- TEST WEBHOOK button (di atas START)
     local testBtn = Instance.new("TextButton")
     testBtn.Text = "🧪 TEST WEBHOOK"
     testBtn.Size = UDim2.new(1, -24, 0, 34)
@@ -416,18 +456,11 @@ local function CreateUI()
     Instance.new("UICorner", testBtn).CornerRadius = UDim.new(0, 6)
 
     testBtn.MouseButton1Click:Connect(function()
-        task.spawn(function()
-            SendTestWebhook(testBtn)
-        end)
+        task.spawn(function() SendTestWebhook(testBtn) end)
     end)
-    testBtn.MouseEnter:Connect(function()
-        TweenService:Create(testBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(70, 110, 210)}):Play()
-    end)
-    testBtn.MouseLeave:Connect(function()
-        TweenService:Create(testBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(50, 80, 160)}):Play()
-    end)
+    testBtn.MouseEnter:Connect(function() TweenService:Create(testBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(70,110,210)}):Play() end)
+    testBtn.MouseLeave:Connect(function() TweenService:Create(testBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(50,80,160)}):Play() end)
 
-    -- START MONITORING button
     local startBtn = Instance.new("TextButton")
     startBtn.Text = "▶  START MONITORING"
     startBtn.Size = UDim2.new(1, -24, 0, 38)
@@ -440,7 +473,6 @@ local function CreateUI()
     startBtn.Parent = frame
     Instance.new("UICorner", startBtn).CornerRadius = UDim.new(0, 6)
 
-    -- Stroke border
     local stroke = Instance.new("UIStroke")
     stroke.Color = Color3.fromRGB(50, 50, 50)
     stroke.Thickness = 1
@@ -458,14 +490,10 @@ local function CreateUI()
     end)
 
     startBtn.MouseEnter:Connect(function()
-        if not SCRIPT_ACTIVE then
-            TweenService:Create(startBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(0, 210, 120)}):Play()
-        end
+        if not SCRIPT_ACTIVE then TweenService:Create(startBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(0,210,120)}):Play() end
     end)
     startBtn.MouseLeave:Connect(function()
-        if not SCRIPT_ACTIVE then
-            TweenService:Create(startBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(0, 180, 100)}):Play()
-        end
+        if not SCRIPT_ACTIVE then TweenService:Create(startBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(0,180,100)}):Play() end
     end)
 end
 
