@@ -9,7 +9,7 @@ local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
 
 -- // CONFIGURATION //
-local WEBHOOK_URL = "https://discord.com/api/webhooks/1478468305122623690/Km_dxsVIXeKMntyleTSbIRUHKd5CK0lndYc6Uzjruhilo6S9zJobdDD4RS65Qm2-XuBA"
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1454729921263042717/gmBV7i0Z7SSGip7DSNIWF18P5s-lkG8aIXq1YCWpIMj6pvpgXCL7G5aNKqOZPAItUS92"
 local PROXY = "https://square-haze-a007.remediashop.workers.dev"
 local SCRIPT_ACTIVE = false
 
