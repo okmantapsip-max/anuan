@@ -2,39 +2,99 @@
 -- Discord @bloxgank
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
-local StarterGui = game:GetService("StarterGui")
 local TextChatService = game:GetService("TextChatService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
 
 -- // CONFIGURATION //
-local WEBHOOK_URL = "https://discord.com/api/webhooks/1454729921263042717/gmBV7i0Z7SSGip7DSNIWF18P5s-lkG8aIXq1YCWpIMj6pvpgXCL7G5aNKqOZPAItUS92"
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1478468305122623690/Km_dxsVIXeKMntyleTSbIRUHKd5CK0lndYc6Uzjruhilo6S9zJobdDD4RS65Qm2-XuBA"
 local PROXY = "https://square-haze-a007.remediashop.workers.dev"
 local SCRIPT_ACTIVE = false
 
--- // DATABASE NAMA SECRET FISH //
-local SecretFishList = {
-    "Crystal Crab", "Orca", "Zombie Shark", "Zombie Megalodon", "Dead Zombie Shark",
-    "Blob Shark", "Ghost Shark", "Skeleton Narwhal", "Ghost Worm Fish", "Worm Fish",
-    "Megalodon", "1x1x1x1 Comet Shark", "Bloodmoon Whale", "Lochness Monster",
-    "Monster Shark", "Eerie Shark", "Great Whale", "Frostborn Shark", "Armored Shark",
-    "Scare", "Queen Crab", "King Crab", "Cryoshade Glider", "Panther Eel",
-    "Giant Squid", "Depthseeker Ray", "Robot Kraken", "Mosasaur Shark", "King Jelly",
-    "Bone Whale", "Elshark Gran Maja", "Elpirate Gran Maja", "Ancient Whale",
-    "Gladiator Shark", "Ancient Lochness Monster", "Talon Serpent", "Hacker Shark",
-    "ElRetro Gran Maja", "Strawberry Choc Megalodon", "Krampus Shark",
-    "Emerald Winter Whale", "Winter Frost Shark", "Icebreaker Whale", "Leviathan",
-    "Pirate Megalodon", "Viridis Lurker", "Cursed Kraken", "Ancient Magma Whale",
-    "Rainbow Comet Shark", "Love Nessie", "Broken Heart Nessie"
+-- // DATABASE IKAN + ASSET ID GAMBAR //
+local SecretFishDB = {
+    ["Crystal Crab"]              = 18335072046,
+    ["Orca"]                      = 18335061483,
+    ["Zombie Shark"]              = 18335056722,
+    ["Zombie Megalodon"]          = 18335056551,
+    ["Dead Zombie Shark"]         = 18335056722,
+    ["Blob Shark"]                = 18335068212,
+    ["Ghost Shark"]               = 18335059639,
+    ["Skeleton Narwhal"]          = 18335057177,
+    ["Ghost Worm Fish"]           = 18335059511,
+    ["Worm Fish"]                 = 18335057406,
+    ["Megalodon"]                 = 18335063073,
+    ["1x1x1x1 Comet Shark"]       = 18335068832,
+    ["Bloodmoon Whale"]           = 18335067980,
+    ["Lochness Monster"]          = 18335063708,
+    ["Monster Shark"]             = 18335062145,
+    ["Eerie Shark"]               = 18335060416,
+    ["Great Whale"]               = 18335058867,
+    ["Frostborn Shark"]           = 18335059957,
+    ["Armored Shark"]             = 18335068417,
+    ["Scare"]                     = 18335058097,
+    ["Queen Crab"]                = 18335058252,
+    ["King Crab"]                 = 18335064431,
+    ["Cryoshade Glider"]          = 18335066928,
+    ["Panther Eel"]               = 18335060799,
+    ["Giant Squid"]               = 18335059345,
+    ["Depthseeker Ray"]           = 18335066551,
+    ["Robot Kraken"]              = 18335058448,
+    ["Mosasaur Shark"]            = 18335061981,
+    ["King Jelly"]                = 18335064243,
+    ["Bone Whale"]                = 18335067645,
+    ["Elshark Gran Maja"]         = 18335060241,
+    ["Elpirate Gran Maja"]        = 18335060241,
+    ["Ancient Whale"]             = 18335068612,
+    ["Gladiator Shark"]           = 18335059068,
+    ["Ancient Lochness Monster"]  = 18335063708,
+    ["Talon Serpent"]             = 18335057777,
+    ["Hacker Shark"]              = 18335059223,
+    ["ElRetro Gran Maja"]         = 18335060241,
+    ["Strawberry Choc Megalodon"] = 18335063073,
+    ["Krampus Shark"]             = 18335062145,
+    ["Emerald Winter Whale"]      = 18335058867,
+    ["Winter Frost Shark"]        = 18335059957,
+    ["Icebreaker Whale"]          = 18335067645,
+    ["Leviathan"]                 = 18335063983,
+    ["Pirate Megalodon"]          = 18335063073,
+    ["Viridis Lurker"]            = 18335060799,
+    ["Cursed Kraken"]             = 18335058448,
+    ["Ancient Magma Whale"]       = 18335068612,
+    ["Rainbow Comet Shark"]       = 18335118712,
+    ["Love Nessie"]               = 18335063708,
+    ["Broken Heart Nessie"]       = 18335063708,
 }
 
-local FishImageCache = {}
+-- // WEBHOOK QUEUE (anti rate-limit) //
+local WebhookQueue = {}
+local IsProcessingQueue = false
 
--- // WEBHOOK SENDER //
+local function ProcessQueue()
+    if IsProcessingQueue then return end
+    IsProcessingQueue = true
+    task.spawn(function()
+        while #WebhookQueue > 0 do
+            local payload = table.remove(WebhookQueue, 1)
+            local requestFunc = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
+            if requestFunc then
+                pcall(function()
+                    requestFunc({
+                        Url = WEBHOOK_URL,
+                        Method = "POST",
+                        Headers = {["Content-Type"] = "application/json"},
+                        Body = HttpService:JSONEncode(payload)
+                    })
+                end)
+            end
+            task.wait(1)
+        end
+        IsProcessingQueue = false
+    end)
+end
+
 local function SendWebhook(title, description, color, fields, imageUrl, thumbUrl)
-    local requestFunc = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
-    if not requestFunc then return end
     local embed = {
         ["title"] = title,
         ["description"] = description,
@@ -45,16 +105,14 @@ local function SendWebhook(title, description, color, fields, imageUrl, thumbUrl
     }
     if imageUrl then embed["image"] = {["url"] = imageUrl} end
     if thumbUrl then embed["thumbnail"] = {["url"] = thumbUrl} end
-    task.spawn(function()
-        pcall(function()
-            requestFunc({
-                Url = WEBHOOK_URL,
-                Method = "POST",
-                Headers = {["Content-Type"] = "application/json"},
-                Body = HttpService:JSONEncode({["embeds"] = {embed}})
-            })
-        end)
-    end)
+    table.insert(WebhookQueue, {["embeds"] = {embed}})
+    ProcessQueue()
+end
+
+-- // AMBIL IMAGE URL DARI ASSET ID //
+local function GetImageUrl(assetId)
+    if not assetId then return nil end
+    return PROXY .. "/asset/" .. tostring(assetId)
 end
 
 -- // STRIP HTML TAGS //
@@ -65,7 +123,7 @@ end
 -- // CEK SECRET FISH + SUPPORT MUTASI //
 local function FindSecretFish(fishName)
     local lower = string.lower(fishName)
-    for _, baseName in ipairs(SecretFishList) do
+    for baseName, assetId in pairs(SecretFishDB) do
         if string.find(lower, string.lower(baseName), 1, true) then
             local s = string.find(lower, string.lower(baseName), 1, true)
             local mutasi = nil
@@ -73,86 +131,10 @@ local function FindSecretFish(fishName)
                 mutasi = fishName:sub(1, s - 1):match("^%s*(.-)%s*$")
                 if mutasi == "" then mutasi = nil end
             end
-            return baseName, mutasi
+            return baseName, assetId, mutasi
         end
     end
-    return nil, nil
-end
-
--- // EKSTRAK ASSET ID DARI URL //
-local function ExtractId(val)
-    if not val or val == "" then return nil end
-    local s = tostring(val)
-    -- rbxassetid://123456
-    local id = s:match("rbxassetid://(%d+)")
-    if id then return id end
-    -- https://assetdelivery.roblox.com/...id=123456
-    id = s:match("[?&]id=(%d+)")
-    if id then return id end
-    -- angka murni
-    id = s:match("^(%d+)$")
-    if id then return id end
-    -- akhir string angka
-    id = s:match("(%d+)$")
-    if id and #id > 3 then return id end
-    return nil
-end
-
--- // AMBIL IMAGE DARI TOOL (VERSI LENGKAP) //
-local function GetFishImageId(item)
-    for _, desc in ipairs(item:GetDescendants()) do
-        pcall(function()
-            -- ImageLabel / ImageButton
-            if desc:IsA("ImageLabel") or desc:IsA("ImageButton") then
-                local id = ExtractId(desc.Image)
-                if id then FishImageCache["__temp"] = id end
-
-            -- Decal / Texture
-            elseif desc:IsA("Decal") or desc:IsA("Texture") then
-                local id = ExtractId(desc.Texture)
-                if id then FishImageCache["__temp"] = id end
-
-            -- SpecialMesh
-            elseif desc:IsA("SpecialMesh") then
-                local id = ExtractId(desc.TextureId)
-                if id then FishImageCache["__temp"] = id end
-
-            -- SurfaceAppearance (ColorMap = albedo texture)
-            elseif desc:IsA("SurfaceAppearance") then
-                local id = ExtractId(desc.ColorMap)
-                if id then FishImageCache["__temp"] = id end
-
-            -- MeshPart (TextureID)
-            elseif desc:IsA("MeshPart") then
-                local id = ExtractId(desc.TextureID)
-                if id then FishImageCache["__temp"] = id end
-
-            -- SpecialMesh di dalam MeshPart
-            elseif desc:IsA("FileMesh") then
-                local id = ExtractId(desc.TextureId)
-                if id then FishImageCache["__temp"] = id end
-            end
-        end)
-
-        if FishImageCache["__temp"] then
-            local result = FishImageCache["__temp"]
-            FishImageCache["__temp"] = nil
-            return result
-        end
-    end
-
-    -- Fallback: cek properti langsung di item (Tool/Model)
-    local fallbackId = nil
-    pcall(function()
-        -- Beberapa game simpan image di attribute
-        local attrs = item:GetAttributes()
-        for _, v in pairs(attrs) do
-            local id = ExtractId(tostring(v))
-            if id then fallbackId = id break end
-        end
-    end)
-
-    return fallbackId
+    return nil, nil, nil
 end
 
 -- // PARSE CHAT SERVER //
@@ -167,63 +149,70 @@ local function ParseChat(rawMsg)
     if not playerName or not fishFull then return nil end
     playerName = playerName:match("%[%a+%]:%s*(.+)") or playerName
     playerName = playerName:match("^%s*(.-)%s*$") or playerName
-    weight = weight:match("^%s*(.-)%s*$") or weight
+    weight = weight and weight:match("^%s*(.-)%s*$") or "N/A"
     fishFull = fishFull:match("^(.-)%s+with a 1 in") or fishFull
     fishFull = fishFull:match("^(.-)%s*[!%.]?$") or fishFull
     fishFull = fishFull:match("^%s*(.-)%s*$") or fishFull
     return { player = playerName, fish = fishFull, weight = weight }
 end
 
--- // PROSES PESAN CHAT SERVER //
+-- // PROSES PESAN CHAT SERVER (monitor orang lain) //
 local function CheckAndSend(rawMsg)
     if not SCRIPT_ACTIVE then return end
     if not string.find(string.lower(rawMsg), "obtained") then return end
     local data = ParseChat(rawMsg)
     if not data then return end
-    local baseName, mutasi = FindSecretFish(data.fish)
+    local baseName, assetId, mutasi = FindSecretFish(data.fish)
     if not baseName then return end
+
     local targetPlayer = Players:FindFirstChild(data.player)
     local avatarUrl = targetPlayer and (PROXY .. "/avatar/" .. tostring(targetPlayer.UserId)) or nil
-    local imageUrl = FishImageCache[baseName] and (PROXY .. "/asset/" .. FishImageCache[baseName]) or nil
+    local imageUrl = GetImageUrl(assetId)
     local fishLabel = "**" .. data.fish .. "**"
     if mutasi then fishLabel = "**" .. data.fish .. "** *(mutasi: " .. baseName .. ")*" end
+
     SendWebhook("🚨 SECRET FISH DETECTED!", nil, 1752220, {
         {["name"] = "Pemain", ["value"] = "**" .. data.player .. "**", ["inline"] = true},
         {["name"] = "Ikan",   ["value"] = fishLabel,                   ["inline"] = true},
         {["name"] = "Berat",  ["value"] = data.weight,                 ["inline"] = true},
+        {["name"] = "Sumber", ["value"] = "📡 Chat Server",            ["inline"] = false},
     }, imageUrl, avatarUrl)
 end
 
--- // CACHE ITEM DARI BACKPACK //
-local function TryCacheItem(item)
-    task.wait(0.1)
-    local baseName, _ = FindSecretFish(item.Name)
-    if baseName and not FishImageCache[baseName] then
-        local imgId = GetFishImageId(item)
-        if imgId then
-            FishImageCache[baseName] = imgId
-        end
-    end
+-- // MONITOR BACKPACK SENDIRI //
+local function OnOwnFishCaught(itemName)
+    if not SCRIPT_ACTIVE then return end
+    local baseName, assetId, mutasi = FindSecretFish(itemName)
+    if not baseName then return end
+
+    local lp = Players.LocalPlayer
+    local avatarUrl = PROXY .. "/avatar/" .. tostring(lp.UserId)
+    local imageUrl = GetImageUrl(assetId)
+    local fishLabel = "**" .. itemName .. "**"
+    if mutasi then fishLabel = "**" .. itemName .. "** *(mutasi: " .. baseName .. ")*" end
+
+    SendWebhook("🎣 KAMU DAPAT SECRET FISH!", nil, 65535, {
+        {["name"] = "Pemain", ["value"] = "**" .. lp.Name .. "**", ["inline"] = true},
+        {["name"] = "Ikan",   ["value"] = fishLabel,               ["inline"] = true},
+        {["name"] = "Sumber", ["value"] = "🎒 Backpack Sendiri",   ["inline"] = false},
+    }, imageUrl, avatarUrl)
 end
 
--- // BACKPACK MONITOR //
-local function WatchBackpack(player, bp)
-    -- Cache semua item yang sudah ada di backpack sekarang
-    for _, item in ipairs(bp:GetChildren()) do
-        task.spawn(TryCacheItem, item)
+local function WatchOwnBackpack()
+    local lp = Players.LocalPlayer
+    local function connectBp(bp)
+        bp.ChildAdded:Connect(function(item)
+            task.wait(0.1)
+            task.spawn(function()
+                OnOwnFishCaught(item.Name)
+            end)
+        end)
     end
-    -- Monitor item baru yang masuk
-    bp.ChildAdded:Connect(function(item)
-        task.spawn(TryCacheItem, item)
-    end)
-end
-
-local function WatchForFish(player)
-    local bp = player:FindFirstChild("Backpack")
-    if bp then WatchBackpack(player, bp) end
-    player.CharacterAdded:Connect(function()
-        local newBp = player:WaitForChild("Backpack", 15)
-        if newBp then WatchBackpack(player, newBp) end
+    local bp = lp:FindFirstChild("Backpack")
+    if bp then connectBp(bp) end
+    lp.CharacterAdded:Connect(function()
+        local newBp = lp:WaitForChild("Backpack", 15)
+        if newBp then connectBp(newBp) end
     end)
 end
 
@@ -245,7 +234,7 @@ local function HookChat()
     end
 end
 
--- // STARTUP WEBHOOK //
+-- // STARTUP //
 local function StartMonitoring()
     local allPlayers = Players:GetPlayers()
     local names = {}
@@ -253,10 +242,11 @@ local function StartMonitoring()
     SendWebhook("🚀 WEBHOOK STARTED", nil, 65280, {
         {["name"] = "Host",          ["value"] = "👤 " .. Players.LocalPlayer.Name,            ["inline"] = true},
         {["name"] = "Total Player",  ["value"] = "👥 " .. tostring(#allPlayers),                ["inline"] = true},
-        {["name"] = "Daftar Player", ["value"] = "```\n" .. table.concat(names, ", ") .. "```", ["inline"] = false}
+        {["name"] = "Daftar Player", ["value"] = "```\n" .. table.concat(names, ", ") .. "```", ["inline"] = false},
+        {["name"] = "Mode",          ["value"] = "📡 Chat Server + 🎒 Backpack Sendiri",        ["inline"] = false},
     })
     HookChat()
-    for _, p in ipairs(Players:GetPlayers()) do WatchForFish(p) end
+    WatchOwnBackpack()
     Players.PlayerAdded:Connect(function(player)
         if not SCRIPT_ACTIVE then return end
         task.spawn(function()
@@ -267,17 +257,14 @@ local function StartMonitoring()
                 {["name"] = "Total",    ["value"] = "👥 " .. tostring(#Players:GetPlayers()), ["inline"] = true}
             }, nil, avatarUrl)
         end)
-        WatchForFish(player)
     end)
     Players.PlayerRemoving:Connect(function(player)
         if not SCRIPT_ACTIVE then return end
         task.spawn(function()
-            local pName = player.Name
-            local pId = player.UserId
-            local avatarUrl = PROXY .. "/avatar/" .. tostring(pId)
+            local avatarUrl = PROXY .. "/avatar/" .. tostring(player.UserId)
             SendWebhook("👋 PLAYER LEFT SERVER", nil, 16729344, {
-                {["name"] = "Username", ["value"] = "**" .. pName .. "**",                        ["inline"] = true},
-                {["name"] = "Total",    ["value"] = "👥 " .. tostring(#Players:GetPlayers() - 1), ["inline"] = true}
+                {["name"] = "Username", ["value"] = "**" .. player.Name .. "**",                        ["inline"] = true},
+                {["name"] = "Total",    ["value"] = "👥 " .. tostring(#Players:GetPlayers() - 1),       ["inline"] = true}
             }, nil, avatarUrl)
         end)
     end)
@@ -285,19 +272,20 @@ end
 
 -- // SEND TEST WEBHOOK //
 local function SendTestWebhook(testBtn)
-    local dummyFishList = {"Leviathan", "Cursed Kraken", "Ancient Magma Whale", "Megalodon", "Bloodmoon Whale"}
-    local dummyFish = dummyFishList[math.random(1, #dummyFishList)]
+    local dummyList = {"Leviathan", "Cursed Kraken", "Ancient Magma Whale", "Megalodon", "Bloodmoon Whale"}
+    local dummyFish = dummyList[math.random(1, #dummyList)]
     local dummyWeight = tostring(math.random(100, 9999) / 10) .. " kg"
-    local dummyPlayer = Players.LocalPlayer.Name
-    local avatarUrl = PROXY .. "/avatar/" .. tostring(Players.LocalPlayer.UserId)
-    local cachedImg = FishImageCache[dummyFish] and (PROXY .. "/asset/" .. FishImageCache[dummyFish]) or nil
+    local lp = Players.LocalPlayer
+    local avatarUrl = PROXY .. "/avatar/" .. tostring(lp.UserId)
+    local assetId = SecretFishDB[dummyFish]
+    local imageUrl = GetImageUrl(assetId)
 
     SendWebhook("🧪 TEST — SECRET FISH DETECTED!", "```ini\n[ INI ADALAH PESAN TEST ]\n```", 16776960, {
-        {["name"] = "Pemain", ["value"] = "**" .. dummyPlayer .. "**",  ["inline"] = true},
-        {["name"] = "Ikan",   ["value"] = "**" .. dummyFish .. "**",    ["inline"] = true},
-        {["name"] = "Berat",  ["value"] = dummyWeight,                  ["inline"] = true},
-        {["name"] = "Status", ["value"] = cachedImg and "✅ Gambar ditemukan di cache" or "⚠️ Gambar belum di-cache (buka backpack dulu)", ["inline"] = false},
-    }, cachedImg, avatarUrl)
+        {["name"] = "Pemain", ["value"] = "**" .. lp.Name .. "**",          ["inline"] = true},
+        {["name"] = "Ikan",   ["value"] = "**" .. dummyFish .. "**",        ["inline"] = true},
+        {["name"] = "Berat",  ["value"] = dummyWeight,                      ["inline"] = true},
+        {["name"] = "Status", ["value"] = imageUrl and "✅ Gambar tersedia" or "⚠️ Gambar tidak ada", ["inline"] = false},
+    }, imageUrl, avatarUrl)
 
     testBtn.Text = "📨 Terkirim!"
     testBtn.BackgroundColor3 = Color3.fromRGB(30, 100, 200)
@@ -377,25 +365,20 @@ local function CreateUI()
 
     minBtn.MouseButton1Click:Connect(function()
         isMinimized = not isMinimized
-        if isMinimized then
-            TweenService:Create(frame, TweenInfo.new(0.2), {Size = miniSize}):Play()
-            minBtn.Text = "□"
-        else
-            TweenService:Create(frame, TweenInfo.new(0.2), {Size = fullSize}):Play()
-            minBtn.Text = "—"
-        end
+        TweenService:Create(frame, TweenInfo.new(0.2), {Size = isMinimized and miniSize or fullSize}):Play()
+        minBtn.Text = isMinimized and "□" or "—"
     end)
 
     closeBtn.MouseButton1Click:Connect(function()
-        TweenService:Create(frame, TweenInfo.new(0.15), {Size = UDim2.new(0,300,0,0), BackgroundTransparency = 1}):Play()
+        TweenService:Create(frame, TweenInfo.new(0.15), {Size = UDim2.new(0,300,0,0), BackgroundTransparency=1}):Play()
         task.wait(0.2)
         gui:Destroy()
     end)
 
-    minBtn.MouseEnter:Connect(function() TweenService:Create(minBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(80,80,80)}):Play() end)
-    minBtn.MouseLeave:Connect(function() TweenService:Create(minBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(60,60,60)}):Play() end)
-    closeBtn.MouseEnter:Connect(function() TweenService:Create(closeBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(230,70,70)}):Play() end)
-    closeBtn.MouseLeave:Connect(function() TweenService:Create(closeBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(200,50,50)}):Play() end)
+    minBtn.MouseEnter:Connect(function() TweenService:Create(minBtn, TweenInfo.new(0.1), {BackgroundColor3=Color3.fromRGB(80,80,80)}):Play() end)
+    minBtn.MouseLeave:Connect(function() TweenService:Create(minBtn, TweenInfo.new(0.1), {BackgroundColor3=Color3.fromRGB(60,60,60)}):Play() end)
+    closeBtn.MouseEnter:Connect(function() TweenService:Create(closeBtn, TweenInfo.new(0.1), {BackgroundColor3=Color3.fromRGB(230,70,70)}):Play() end)
+    closeBtn.MouseLeave:Connect(function() TweenService:Create(closeBtn, TweenInfo.new(0.1), {BackgroundColor3=Color3.fromRGB(200,50,50)}):Play() end)
 
     local dragging, dragStart, startPos
     topBar.InputBegan:Connect(function(input)
@@ -409,7 +392,7 @@ local function CreateUI()
     game:GetService("UserInputService").InputChanged:Connect(function(input)
         if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
             local delta = input.Position - dragStart
-            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset+delta.X, startPos.Y.Scale, startPos.Y.Offset+delta.Y)
         end
     end)
 
@@ -433,13 +416,13 @@ local function CreateUI()
     statusLabel.Parent = frame
 
     local webhookInfo = Instance.new("TextLabel")
-    webhookInfo.Text = "🔗 Webhook: ...Qm2-XuBA"
+    webhookInfo.Text = "🔗 Webhook: ...Qm2-XuBA  |  📡 Chat + 🎒 Backpack"
     webhookInfo.Size = UDim2.new(1, -24, 0, 20)
     webhookInfo.Position = UDim2.new(0, 12, 0, 66)
     webhookInfo.BackgroundTransparency = 1
     webhookInfo.TextColor3 = Color3.fromRGB(100, 200, 120)
     webhookInfo.Font = Enum.Font.Gotham
-    webhookInfo.TextSize = 10
+    webhookInfo.TextSize = 9
     webhookInfo.TextXAlignment = Enum.TextXAlignment.Left
     webhookInfo.Parent = frame
 
@@ -458,8 +441,8 @@ local function CreateUI()
     testBtn.MouseButton1Click:Connect(function()
         task.spawn(function() SendTestWebhook(testBtn) end)
     end)
-    testBtn.MouseEnter:Connect(function() TweenService:Create(testBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(70,110,210)}):Play() end)
-    testBtn.MouseLeave:Connect(function() TweenService:Create(testBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(50,80,160)}):Play() end)
+    testBtn.MouseEnter:Connect(function() TweenService:Create(testBtn, TweenInfo.new(0.1), {BackgroundColor3=Color3.fromRGB(70,110,210)}):Play() end)
+    testBtn.MouseLeave:Connect(function() TweenService:Create(testBtn, TweenInfo.new(0.1), {BackgroundColor3=Color3.fromRGB(50,80,160)}):Play() end)
 
     local startBtn = Instance.new("TextButton")
     startBtn.Text = "▶  START MONITORING"
@@ -482,7 +465,7 @@ local function CreateUI()
         if SCRIPT_ACTIVE then return end
         SCRIPT_ACTIVE = true
         statusDot.BackgroundColor3 = Color3.fromRGB(0, 220, 100)
-        statusLabel.Text = "Aktif — Monitoring berjalan..."
+        statusLabel.Text = "Aktif — Chat & Backpack dimonitor"
         statusLabel.TextColor3 = Color3.fromRGB(0, 220, 100)
         startBtn.Text = "✅  MONITORING AKTIF"
         startBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
@@ -490,10 +473,10 @@ local function CreateUI()
     end)
 
     startBtn.MouseEnter:Connect(function()
-        if not SCRIPT_ACTIVE then TweenService:Create(startBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(0,210,120)}):Play() end
+        if not SCRIPT_ACTIVE then TweenService:Create(startBtn, TweenInfo.new(0.15), {BackgroundColor3=Color3.fromRGB(0,210,120)}):Play() end
     end)
     startBtn.MouseLeave:Connect(function()
-        if not SCRIPT_ACTIVE then TweenService:Create(startBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(0,180,100)}):Play() end
+        if not SCRIPT_ACTIVE then TweenService:Create(startBtn, TweenInfo.new(0.15), {BackgroundColor3=Color3.fromRGB(0,180,100)}):Play() end
     end)
 end
 
