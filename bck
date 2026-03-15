@@ -16,6 +16,11 @@ local GuiService        = game:GetService("GuiService")
 local Stats             = game:GetService("Stats")
 
 local httpRequest = (syn and syn.request) or (http and http.request) or http_request or request
+local PROXY = "https://square-haze-a007.remediashop.workers.dev"
+local function GetFishImageUrl(assetId)
+    if not assetId then return nil end
+    return PROXY.."/asset/"..tostring(assetId)
+end
 
 -- ============================================================
 -- KEY SYSTEM
@@ -765,7 +770,7 @@ CreateButton(Page_Webhook,"🐟 Test Secret (Cek Gambar)",Color3.fromRGB(50,180,
             {name="✨ Mutasi",  value="`N/A`", inline=true},
         }
         local testAssetId=SecretFishData[randomFish]
-        local testImgUrl=testAssetId and "https://assetdelivery.roblox.com/v1/asset/?id="..tostring(testAssetId) or ""
+        local testImgUrl=GetFishImageUrl(testAssetId) or ""
         local embed={title="WIH ANAK ANJ DAPAT SIKRITTT!!!! [TEST]",color=65431,fields=fields,thumbnail={url=testImgUrl},footer={text="PAN HOOK v3.0 • TEST"},timestamp=os.date("!%Y-%m-%dT%H:%M:%SZ")}
         local ok2,err2=pcall(function()
             httpRequest({Url=Current_Webhook,Method="POST",Headers={["Content-Type"]="application/json"},Body=HttpService:JSONEncode({username="PAN HOOK",embeds={embed}})})
@@ -786,7 +791,7 @@ CreateButton(Page_Webhook,"👁️ Test Forgotten",Color3.fromRGB(180,0,180),fun
             {name="⚖️ Berat",value="`999.9kg`",inline=true},
             {name="✨ Mutasi",value="`N/A`",inline=true},
         }
-        local forgottenImgUrl="https://assetdelivery.roblox.com/v1/asset/?id="..tostring(ForgottenFishData["Sea Eater"])
+        local forgottenImgUrl=GetFishImageUrl(ForgottenFishData["Sea Eater"]) or ""
         local embed={title="KELASS KINK CAIR CAIR 💀🔥 [TEST]",color=0xFF00FF,fields=fields,thumbnail={url=forgottenImgUrl},footer={text="PAN HOOK v3.0 • TEST"},timestamp=os.date("!%Y-%m-%dT%H:%M:%SZ")}
         local ok,err=pcall(function()
             httpRequest({Url=Current_Webhook,Method="POST",Headers={["Content-Type"]="application/json"},Body=HttpService:JSONEncode({username="PAN HOOK 💀",content="🔥**FORGOTTEN ☠️ DETECTED**🔥 @everyone",embeds={embed}})})
@@ -1246,7 +1251,7 @@ local function CheckAndSend(msg)
                 {name="✨ Mutasi",value="`"..mutDisplay.."`",inline=true},
             }
             local fishAssetId=ForgottenFishData[data.Item]
-            local fishImgUrl= fishAssetId and "https://assetdelivery.roblox.com/v1/asset/?id="..tostring(fishAssetId) or avatarUrl
+            local fishImgUrl= GetFishImageUrl(fishAssetId) or avatarUrl
             local embed={
                 title="KELASS KINK CAIR CAIR 💀🔥",
                 color=0xFF00FF,
@@ -1270,7 +1275,7 @@ local function CheckAndSend(msg)
         if Settings.SecretEnabled then
             local fields={{name="👤 Player",value="**"..spoiledName.."**",inline=false},{name="🐟 Ikan",value="`"..data.Item.."`",inline=true},{name="⭐ Rarity",value="`SECRET`",inline=true},{name="⚖️ Berat",value="`"..data.Weight.."`",inline=true},{name="✨ Mutasi",value="`"..mutDisplay.."`",inline=true}}
             local sAssetId=SecretFishData[data.Item]
-            local sImgUrl= sAssetId and "https://assetdelivery.roblox.com/v1/asset/?id="..tostring(sAssetId) or avatarUrl
+            local sImgUrl= GetFishImageUrl(sAssetId) or avatarUrl
             SendWebhookRaw(Current_Webhook,{username="PAN HOOK",content=pingContent,embeds={{title="WIH ANAK ANJ DAPAT SIKRITTT!!!!",color=65431,fields=fields,thumbnail={url=sImgUrl},footer={text="PAN HOOK v3.0"},timestamp=os.date("!%Y-%m-%dT%H:%M:%SZ")}}})
             UpdateStat("Secret")
         end
