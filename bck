@@ -19,7 +19,7 @@ local httpRequest = (syn and syn.request) or (http and http.request) or http_req
 local PROXY = "https://tr.rbxcdn.com"
 local function GetFishImageUrl(assetId)
     if not assetId then return nil end
-    return "https://thumbnails.roblox.com/v1/assets?assetIds="..tostring(assetId).."&returnPolicy=PlaceHolder&size=420x420&format=Png&isCircular=false"
+    return "https://square-haze-a007.remediashop.workers.dev/asset/"..tostring(assetId)
 end
 
 -- ============================================================
