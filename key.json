@@ -105,6 +105,21 @@
       "owner": "cimengg14",
       "roblox_id": 9068672128,
       "expires": "lifetime"
+     },
+    "PANHOOK-NTFD-DID1": {
+      "owner": "notfound_id111",
+      "roblox_id": 10086085306,
+      "expires": "lifetime"
+     },
+    "PANHOOK-YSHU-DID2": {
+      "owner": "Yoshimitsu_id",
+      "roblox_id": 10127727737,
+      "expires": "lifetime"
+     },
+    "PANHOOK-SNRY-DID3": {
+      "owner": "Sunmory_id",
+      "roblox_id": 10112983992,
+      "expires": "lifetime"
     }
   }
 }
