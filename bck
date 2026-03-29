@@ -29,7 +29,6 @@ local State = {
     AutoAdd = false,
     AutoConfirm = false,
     TradeActive = false,
-    TradePartner = nil,
 }
 
 local SelectedFish = {}
@@ -96,25 +95,23 @@ local function GetTargetItems()
 end
 
 --// ================================
---// LOAD FLUENT UI
+--// LOAD RAYFIELD
 --// ================================
-local Fluent = loadstring(game:HttpGet(
-    "https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"
-))()
+local Rayfield = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Rayfield/main/source"))()
 
-local Window = Fluent:CreateWindow({
-    Title = "Fish It — Auto Trade",
-    SubTitle = "DVN Edition",
-    Size = UDim2.fromOffset(580, 460),
-    Theme = "Dark"
+local Window = Rayfield:CreateWindow({
+    Name = "Fish It Auto Trade",
+    LoadingTitle = "DVN Script",
+    LoadingSubtitle = "by cit 😎",
+    ConfigurationSaving = {
+        Enabled = false
+    }
 })
 
-local Tabs = {
-    Trading = Window:AddTab({ Title = "Trading" }),
-}
+local Tab = Window:CreateTab("Trading")
 
 --// ================================
---// UI BUILD FISH LIST
+--// BUILD FISH UI
 --// ================================
 local function BuildFishUI()
     for _, v in pairs(FishToggles) do
@@ -125,49 +122,48 @@ local function BuildFishUI()
     local data = GetAllFish()
 
     for name, count in pairs(data) do
-        local toggle = Tabs.Trading:AddToggle("fish_"..name, {
-            Title = name .. " (" .. count .. ")",
-            Default = SelectedFish[name] or false,
+        FishToggles[name] = Tab:CreateToggle({
+            Name = name .. " (" .. count .. ")",
+            CurrentValue = SelectedFish[name] or false,
             Callback = function(val)
                 SelectedFish[name] = val
             end
         })
-
-        FishToggles[name] = toggle
     end
 end
 
 --// ================================
 --// UI CONTROLS
 --// ================================
-Tabs.Trading:AddInput("TargetUser", {
-    Title = "Target Username",
-    Default = "",
-    Callback = function(val)
-        State.TargetUsername = val
+Tab:CreateInput({
+    Name = "Target Username",
+    PlaceholderText = "Masukkan username...",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(text)
+        State.TargetUsername = text
     end
 })
 
-Tabs.Trading:AddToggle("AutoAccept", {
-    Title = "Auto Accept Trade",
-    Default = false,
+Tab:CreateToggle({
+    Name = "Auto Accept",
+    CurrentValue = false,
     Callback = function(v) State.AutoAccept = v end
 })
 
-Tabs.Trading:AddToggle("AutoAdd", {
-    Title = "Auto Add Selected Fish",
-    Default = false,
+Tab:CreateToggle({
+    Name = "Auto Add Selected Fish",
+    CurrentValue = false,
     Callback = function(v) State.AutoAdd = v end
 })
 
-Tabs.Trading:AddToggle("AutoConfirm", {
-    Title = "Auto Confirm",
-    Default = false,
+Tab:CreateToggle({
+    Name = "Auto Confirm",
+    CurrentValue = false,
     Callback = function(v) State.AutoConfirm = v end
 })
 
-Tabs.Trading:AddButton({
-    Title = "🔄 Refresh Fish",
+Tab:CreateButton({
+    Name = "🔄 Refresh Fish",
     Callback = function()
         BuildFishUI()
     end
@@ -184,7 +180,6 @@ local function TryAcceptTrade(player)
     if remote then
         remote:FireServer(player)
         State.TradeActive = true
-        State.TradePartner = player
     end
 end
 
@@ -212,12 +207,11 @@ local function TryConfirm()
         task.wait(ACTION_DELAY)
         remote:FireServer()
         State.TradeActive = false
-        State.TradePartner = nil
     end
 end
 
 --// ================================
---// LISTENER TRADE REQUEST
+--// LISTENER
 --// ================================
 task.spawn(function()
     local remote = GetRemote(REMOTE_TRADE_REQUEST)
@@ -251,9 +245,3 @@ task.spawn(function()
     task.wait(1)
     BuildFishUI()
 end)
-
-Fluent:Notify({
-    Title = "Loaded ✅",
-    Content = "Pilih ikan di UI lalu trade",
-    Duration = 5
-})
