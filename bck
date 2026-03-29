@@ -1,1 +1,259 @@
-AMBATUKAMMMM Ahhh🤓
+--// ================================
+--// CONFIG
+--// ================================
+local INVENTORY_FOLDER = "Inventory"
+local REMOTE_FOLDER_PATH = "RemoteEvents"
+
+local REMOTE_TRADE_REQUEST = "TradeRequest"
+local REMOTE_TRADE_ACCEPT = "AcceptTrade"
+local REMOTE_ADD_ITEM = "AddItemToTrade"
+local REMOTE_CONFIRM_TRADE = "ConfirmTrade"
+
+local LOOP_DELAY = 0.5
+local ACTION_DELAY = 0.3
+
+--// ================================
+--// SERVICES
+--// ================================
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local LocalPlayer = Players.LocalPlayer
+
+--// ================================
+--// STATE
+--// ================================
+local State = {
+    TargetUsername = "",
+    AutoAccept = false,
+    AutoAdd = false,
+    AutoConfirm = false,
+    TradeActive = false,
+    TradePartner = nil,
+}
+
+local SelectedFish = {}
+local FishToggles = {}
+
+--// ================================
+--// REMOTE HELPER
+--// ================================
+local function GetRemote(name)
+    local folder = ReplicatedStorage:FindFirstChild(REMOTE_FOLDER_PATH)
+    if folder then
+        return folder:FindFirstChild(name)
+    end
+    return ReplicatedStorage:FindFirstChild(name)
+end
+
+--// ================================
+--// INVENTORY SCAN
+--// ================================
+local function GetAllFish()
+    local counts = {}
+
+    local playerData = LocalPlayer:FindFirstChild("PlayerData")
+                    or LocalPlayer:FindFirstChild("Data")
+                    or LocalPlayer:FindFirstChild(INVENTORY_FOLDER)
+
+    if not playerData then
+        playerData = LocalPlayer:FindFirstChildOfClass("Folder")
+    end
+
+    if playerData then
+        local inv = playerData:FindFirstChild(INVENTORY_FOLDER) or playerData
+
+        for _, item in ipairs(inv:GetChildren()) do
+            counts[item.Name] = (counts[item.Name] or 0) + 1
+        end
+    end
+
+    return counts
+end
+
+local function GetTargetItems()
+    local items = {}
+
+    local playerData = LocalPlayer:FindFirstChild("PlayerData")
+                    or LocalPlayer:FindFirstChild("Data")
+                    or LocalPlayer:FindFirstChild(INVENTORY_FOLDER)
+
+    if not playerData then
+        playerData = LocalPlayer:FindFirstChildOfClass("Folder")
+    end
+
+    if playerData then
+        local inv = playerData:FindFirstChild(INVENTORY_FOLDER) or playerData
+
+        for _, item in ipairs(inv:GetChildren()) do
+            if SelectedFish[item.Name] then
+                table.insert(items, item)
+            end
+        end
+    end
+
+    return items
+end
+
+--// ================================
+--// LOAD FLUENT UI
+--// ================================
+local Fluent = loadstring(game:HttpGet(
+    "https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"
+))()
+
+local Window = Fluent:CreateWindow({
+    Title = "Fish It — Auto Trade",
+    SubTitle = "DVN Edition",
+    Size = UDim2.fromOffset(580, 460),
+    Theme = "Dark"
+})
+
+local Tabs = {
+    Trading = Window:AddTab({ Title = "Trading" }),
+}
+
+--// ================================
+--// UI BUILD FISH LIST
+--// ================================
+local function BuildFishUI()
+    for _, v in pairs(FishToggles) do
+        pcall(function() v:Destroy() end)
+    end
+    FishToggles = {}
+
+    local data = GetAllFish()
+
+    for name, count in pairs(data) do
+        local toggle = Tabs.Trading:AddToggle("fish_"..name, {
+            Title = name .. " (" .. count .. ")",
+            Default = SelectedFish[name] or false,
+            Callback = function(val)
+                SelectedFish[name] = val
+            end
+        })
+
+        FishToggles[name] = toggle
+    end
+end
+
+--// ================================
+--// UI CONTROLS
+--// ================================
+Tabs.Trading:AddInput("TargetUser", {
+    Title = "Target Username",
+    Default = "",
+    Callback = function(val)
+        State.TargetUsername = val
+    end
+})
+
+Tabs.Trading:AddToggle("AutoAccept", {
+    Title = "Auto Accept Trade",
+    Default = false,
+    Callback = function(v) State.AutoAccept = v end
+})
+
+Tabs.Trading:AddToggle("AutoAdd", {
+    Title = "Auto Add Selected Fish",
+    Default = false,
+    Callback = function(v) State.AutoAdd = v end
+})
+
+Tabs.Trading:AddToggle("AutoConfirm", {
+    Title = "Auto Confirm",
+    Default = false,
+    Callback = function(v) State.AutoConfirm = v end
+})
+
+Tabs.Trading:AddButton({
+    Title = "🔄 Refresh Fish",
+    Callback = function()
+        BuildFishUI()
+    end
+})
+
+--// ================================
+--// TRADE LOGIC
+--// ================================
+local function TryAcceptTrade(player)
+    if not State.AutoAccept then return end
+    if player.Name ~= State.TargetUsername then return end
+
+    local remote = GetRemote(REMOTE_TRADE_ACCEPT)
+    if remote then
+        remote:FireServer(player)
+        State.TradeActive = true
+        State.TradePartner = player
+    end
+end
+
+local function TryAddItems()
+    if not State.AutoAdd then return end
+    if not State.TradeActive then return end
+
+    local items = GetTargetItems()
+    local remote = GetRemote(REMOTE_ADD_ITEM)
+
+    if remote then
+        for _, item in ipairs(items) do
+            task.wait(ACTION_DELAY)
+            remote:FireServer(item.Name)
+        end
+    end
+end
+
+local function TryConfirm()
+    if not State.AutoConfirm then return end
+    if not State.TradeActive then return end
+
+    local remote = GetRemote(REMOTE_CONFIRM_TRADE)
+    if remote then
+        task.wait(ACTION_DELAY)
+        remote:FireServer()
+        State.TradeActive = false
+        State.TradePartner = nil
+    end
+end
+
+--// ================================
+--// LISTENER TRADE REQUEST
+--// ================================
+task.spawn(function()
+    local remote = GetRemote(REMOTE_TRADE_REQUEST)
+    if remote then
+        remote.OnClientEvent:Connect(function(sender)
+            if typeof(sender) == "Instance" then
+                TryAcceptTrade(sender)
+            end
+        end)
+    end
+end)
+
+--// ================================
+--// LOOP
+--// ================================
+task.spawn(function()
+    while true do
+        task.wait(LOOP_DELAY)
+
+        if State.TradeActive then
+            TryAddItems()
+            TryConfirm()
+        end
+    end
+end)
+
+--// ================================
+--// AUTO LOAD
+--// ================================
+task.spawn(function()
+    task.wait(1)
+    BuildFishUI()
+end)
+
+Fluent:Notify({
+    Title = "Loaded ✅",
+    Content = "Pilih ikan di UI lalu trade",
+    Duration = 5
+})
