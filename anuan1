@@ -339,6 +339,7 @@ local SecretFishData = {
     ["Ketupat Whale"]             = "100322220107082",
     ["Bonemaw Tyrant"]            = "113238296585201",
     ["Strawberry Orca"]           = "130161552256138",
+    ["Deepsea Monster Axolotl"]   = "96135359777643",
 }
 
 -- Crystalized whitelist
