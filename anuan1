@@ -278,7 +278,7 @@ local ForgottenFishData = {
     ["Sea Eater"]    = true,
     ["Thunderzilla"] = true,
     ["Iridesca"]     = true,
-    ["Frosbite Leviathan"] = true,
+    ["Frostbite Leviathan"] = true,
 }
 
 local SecretFishData = {
