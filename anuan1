@@ -275,71 +275,71 @@ local ShowNotification
 -- SECRET FISH DATABASE
 -- ============================================================
 local ForgottenFishData = {
-    ["Sea Eater"]    = "94750467234464",
-    ["Thunderzilla"] = "100901086602309",
-    ["Iridesca"]     = "92850313420357",
+    ["Sea Eater"]    = true,
+    ["Thunderzilla"] = true,
+    ["Iridesca"]     = true,
 }
 
 local SecretFishData = {
-    ["Crystal Crab"]              = "110188263756245",
-    ["Orca"]                      = "120876783250189",
-    ["Zombie Shark"]              = "118840558184490",
-    ["Zombie Megalodon"]          = "110861329686146",
-    ["Dead Zombie Shark"]         = "74502211632455",
-    ["Blob Shark"]                = "120294742064292",
-    ["1x1x1x1 Comet Shark"]      = "98046606623336",
-    ["1x1x1x1 Shark"]            = "126602140465429",
-    ["Frostborn Shark"]           = "125463067542850",
-    ["Ghost Shark"]               = "102028503382077",
-    ["Gladiator Shark"]           = "131785277053113",
-    ["Krampus Shark"]             = "90833088805438",
-    ["Mosasaur Shark"]            = "119021943786069",
-    ["Monster Shark"]             = "109551787474599",
-    ["Rainbow Comet Shark"]       = "121195842662298",
-    ["Thin Armor Shark"]          = "123540389497955",
-    ["Winter Frost Shark"]        = "139526906837161",
-    ["Skeleton Narwhal"]          = "72248976760148",
-    ["Ghost Worm Fish"]           = "107896897205452",
-    ["Worm Fish"]                 = "88157067345872",
-    ["Megalodon"]                 = "126066407227328",
-    ["Bloodmoon Whale"]           = "113886190969614",
-    ["Emerald Winter Whale"]      = "77578943978639",
-    ["Bone Whale"]                = "99804145194043",
-    ["Eerie Shark"]               = "114252804065144",
-    ["Icebreaker Whale"]          = "71622364014615",
-    ["Great Whale"]               = "110349456710432",
-    ["Great Christmas Whale"]     = "71302255255094",
-    ["Ancient Whale"]             = "106712272327597",
-    ["Ancient Magma Whale"]       = "79419619363511",
-    ["Cursed Kraken"]             = "88584771745160",
-    ["Robot Kraken"]              = "80927639907406",
-    ["Ancient Lochness Monster"]  = "122849883484708",
-    ["Lochness Monster"]          = "88964613838360",
-    ["Scare"]                     = "76893887663677",
-    ["Giant Squid"]               = "135470649745250",
-    ["Viridis Lurker"]            = "104425720050620",
-    ["Queen Crab"]                = "73709080100110",
-    ["King Crab"]                 = "136951139611035",
-    ["Cryoshade Glider"]          = "107008051913908",
-    ["Panther Eel"]               = "101328665301159",
-    ["Depthseeker Ray"]           = "92527448781061",
-    ["King Jelly"]                = "104757933481327",
-    ["ElRetro Gran Maja"]         = "87213487175221",
-    ["Elpirate Gran Maja"]        = "131441237084542",
-    ["Elshark Gran Maja"]         = "115522161459382",
-    ["Strawberry Choc Megalodon"] = "113501574324315",
-    ["Pirate Megalodon"]          = "111717850876602",
-    ["Leviathan"]                 = "121794505904244",
-    ["Talon Serpent"]             = "108665275325646",
-    ["Wild Serpent"]              = "105102846577855",
-    ["Love Nessie"]               = "120503903398099",
-    ["Broken Heart Nessie"]       = "128778303459704",
-    ["Cosmic Mutant Shark"]       = "73059280090488",
-    ["Mutant Runic Koi"]          = "70864605663877",
-    ["Ketupat Whale"]             = "100322220107082",
-    ["Bonemaw Tyrant"]            = "113238296585201",
-    ["Strawberry Orca"]           = "130161552256138",
-    ["Deepsea Monster Axolotl"]   = "96135359777643",
+    ["Crystal Crab"]              = true,
+    ["Orca"]                      = true,
+    ["Zombie Shark"]              = true,
+    ["Zombie Megalodon"]          = true,
+    ["Dead Zombie Shark"]         = true,
+    ["Blob Shark"]                = true,
+    ["1x1x1x1 Comet Shark"]      = true,
+    ["1x1x1x1 Shark"]            = true,
+    ["Frostborn Shark"]           = true,
+    ["Ghost Shark"]               = true,
+    ["Gladiator Shark"]           = true,
+    ["Krampus Shark"]             = true,
+    ["Mosasaur Shark"]            = true,
+    ["Monster Shark"]             = true,
+    ["Rainbow Comet Shark"]       = true,
+    ["Thin Armor Shark"]          = true,
+    ["Winter Frost Shark"]        = true,
+    ["Skeleton Narwhal"]          = true,
+    ["Ghost Worm Fish"]           = true,
+    ["Worm Fish"]                 = true,
+    ["Megalodon"]                 = true,
+    ["Bloodmoon Whale"]           = true,
+    ["Emerald Winter Whale"]      = true,
+    ["Bone Whale"]                = true,
+    ["Eerie Shark"]               = true,
+    ["Icebreaker Whale"]          = true,
+    ["Great Whale"]               = true,
+    ["Great Christmas Whale"]     = true,
+    ["Ancient Whale"]             = true,
+    ["Ancient Magma Whale"]       = true,
+    ["Cursed Kraken"]             = true,
+    ["Robot Kraken"]              = true,
+    ["Ancient Lochness Monster"]  = true,
+    ["Lochness Monster"]          = true,
+    ["Scare"]                     = true,
+    ["Giant Squid"]               = true,
+    ["Viridis Lurker"]            = true,
+    ["Queen Crab"]                = true,
+    ["King Crab"]                 = true,
+    ["Cryoshade Glider"]          = true,
+    ["Panther Eel"]               = true,
+    ["Depthseeker Ray"]           = true,
+    ["King Jelly"]                = true,
+    ["ElRetro Gran Maja"]         = true,
+    ["Elpirate Gran Maja"]        = true,
+    ["Elshark Gran Maja"]         = true,
+    ["Strawberry Choc Megalodon"] = true,
+    ["Pirate Megalodon"]          = true,
+    ["Leviathan"]                 = true,
+    ["Talon Serpent"]             = true,
+    ["Wild Serpent"]              = true,
+    ["Love Nessie"]               = true,
+    ["Broken Heart Nessie"]       = true,
+    ["Cosmic Mutant Shark"]       = true,
+    ["Mutant Runic Koi"]          = true,
+    ["Ketupat Whale"]             = true,
+    ["Bonemaw Tyrant"]            = true,
+    ["Strawberry Orca"]           = true,
+    ["Deepsea Monster Axolotl"]   = true,
 }
 
 -- Crystalized whitelist
@@ -385,10 +385,9 @@ task.spawn(function()
     end)
 end)
 
--- Ambil image URL ikan: prioritas auto-load, fallback ke manual ID
+-- Ambil image URL ikan dari auto-load cache
 local function GetFishImage(fishName)
     if not fishName then return nil end
-    -- cek auto-load cache dulu
     local autoIcon = fishImageCache[fishName:lower()]
     if autoIcon then
         local s = tostring(autoIcon)
@@ -396,9 +395,6 @@ local function GetFishImage(fishName)
         local id = s:match("%d+")
         if id then return "https://square-haze-a007.remediashop.workers.dev/asset/"..id end
     end
-    -- fallback ke manual ID dari SecretFishData / ForgottenFishData
-    local manualId = SecretFishData[fishName] or ForgottenFishData[fishName]
-    if manualId then return GetFishImageUrl(manualId) end
     return nil
 end
 
@@ -840,8 +836,7 @@ CreateButton(Page_Webhook,"🐟 Test Secret (Cek Gambar)",Color3.fromRGB(50,180,
             {name="⚖️ Berat",  value="`999.9kg`", inline=true},
             {name="✨ Mutasi",  value="`N/A`", inline=true},
         }
-        local testAssetId=SecretFishData[randomFish]
-        local testImgUrl=GetFishImageUrl(testAssetId) or ""
+        local testImgUrl=GetFishImage(randomFish) or ""
         local embed={title="Alhamdulillah anak soleh dapet secret💦 [TEST]",color=65431,fields=fields,image={url=testImgUrl},footer={text="PAN HOOK v3.0 • TEST"},timestamp=os.date("!%Y-%m-%dT%H:%M:%SZ")}
         local ok2,err2=pcall(function()
             httpRequest({Url=Current_Webhook,Method="POST",Headers={["Content-Type"]="application/json"},Body=HttpService:JSONEncode({username="PAN HOOK",embeds={embed}})})
@@ -862,7 +857,7 @@ CreateButton(Page_Webhook,"👁️ Test Forgotten",Color3.fromRGB(180,0,180),fun
             {name="⚖️ Berat",value="`999.9kg`",inline=true},
             {name="✨ Mutasi",value="`N/A`",inline=true},
         }
-        local forgottenImgUrl=GetFishImageUrl(ForgottenFishData["Sea Eater"]) or ""
+        local forgottenImgUrl=GetFishImage("Sea Eater") or ""
         local embed={title="KELASS KINK CAIR CAIR 💀🔥 [TEST]",color=0xFF00FF,fields=fields,image={url=forgottenImgUrl},footer={text="PAN HOOK v3.0 • TEST"},timestamp=os.date("!%Y-%m-%dT%H:%M:%SZ")}
         local ok,err=pcall(function()
             httpRequest({Url=Current_Webhook,Method="POST",Headers={["Content-Type"]="application/json"},Body=HttpService:JSONEncode({username="PAN HOOK 💀",content="🔥**FORGOTTEN ☠️ DETECTED**🔥 @everyone",embeds={embed}})})
@@ -1294,7 +1289,7 @@ local function CheckAndSend(msg)
         local userId=playerObj and playerObj.UserId or 0
         local avatarUrl=GetPlayerAvatar(userId)
         local pingContent=GetDiscordId(p) and "GG! <@"..GetDiscordId(p)..">" or ""
-        local eggyImgUrl=GetFishImageUrl("104306897643503")
+        local eggyImgUrl=GetFishImage("Eggy Enchant Stone") or nil
         local fields={{name="👤 Player",value="**"..spoiledName.."**",inline=false},{name="🥚 Item",value="`Eggy Enchant Stone`",inline=true}}
         SendWebhookRaw(Current_Webhook,{username="PAN HOOK",content=pingContent,embeds={{title="🥚 EGGY ENCHANT STONE!",color=0xFF0000,fields=fields,thumbnail={url=eggyImgUrl},footer={text="PAN HOOK v3.0"},timestamp=os.date("!%Y-%m-%dT%H:%M:%SZ")}}})
         UpdateStat("Total"); return
@@ -1385,7 +1380,7 @@ local function CheckAndSend(msg)
     -- Ruby Gemstone
     if Settings.RubyEnabled and lowerItem:find("ruby") and data.Mutation and data.Mutation:lower():find("gemstone") then
         local fields={{name="👤 Player",value="**"..spoiledName.."**",inline=false},{name="🐟 Ikan",value="`"..data.Item.."`",inline=true},{name="⚖️ Berat",value="`"..data.Weight.."`",inline=true},{name="🧬 Mutasi",value="`Gemstone`",inline=true}}
-        local rubyImgUrl=GetFishImageUrl("91295888272023")
+        local rubyImgUrl=GetFishImage("Ruby") or nil
         SendWebhookRaw(Current_Webhook,{username="PAN HOOK",content=pingContent,embeds={{title="💎 Ruby Gemstone!",color=0x32DCBC,fields=fields,thumbnail={url=rubyImgUrl},footer={text="PAN HOOK v3.0"},timestamp=os.date("!%Y-%m-%dT%H:%M:%SZ")}}})
         UpdateStat("Ruby"); return
     end
