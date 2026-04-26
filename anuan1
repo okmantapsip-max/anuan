@@ -278,6 +278,7 @@ local ForgottenFishData = {
     ["Sea Eater"]    = true,
     ["Thunderzilla"] = true,
     ["Iridesca"]     = true,
+    ["Frosbite Leviathan"] = true,
 }
 
 local SecretFishData = {
@@ -340,6 +341,7 @@ local SecretFishData = {
     ["Bonemaw Tyrant"]            = true,
     ["Strawberry Orca"]           = true,
     ["Deepsea Monster Axolotl"]   = true,
+    ["Blocky Lochness Monster"]   = true,
 }
 
 -- Crystalized whitelist
