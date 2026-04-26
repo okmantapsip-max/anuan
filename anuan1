@@ -358,45 +358,100 @@ if ok0 and itemsMod then
     end
 end
 
--- Auto-load fish images dari ReplicatedStorage
-local fishImageCache = {}
+-- ============================================================
+-- FISH IMAGE SYSTEM (dari CIA Logger)
+-- ============================================================
+local fishImages = {}
+local fishImagesTokens = {}
+
+local function normalizeStr(str)
+    if type(str)~="string" then return "" end
+    return str:lower():gsub("%W","")
+end
+local function tokenKey(str)
+    if type(str)~="string" then return "" end
+    local t={}
+    for w in str:lower():gmatch("%w+") do table.insert(t,w) end
+    table.sort(t); return table.concat(t,"")
+end
+local function resolveIcon(icon)
+    if typeof and typeof(icon)=="Instance" then
+        if icon:IsA("Decal") then return icon.Texture end
+        if icon:IsA("ImageLabel") or icon:IsA("ImageButton") then return icon.Image end
+    end
+    return icon
+end
+local function addFishImage(name, icon)
+    if type(name)~="string" or name=="" or icon==nil then return end
+    fishImages[normalizeStr(name)]=icon
+    fishImagesTokens[tokenKey(name)]=icon
+    local before,inside=name:match("^(.-)%s*%((.-)%)%s*$")
+    if before and inside then
+        local swapped=inside.." "..before
+        fishImages[normalizeStr(swapped)]=icon
+        fishImagesTokens[tokenKey(swapped)]=icon
+        fishImages[normalizeStr(before)]=icon
+        fishImagesTokens[tokenKey(before)]=icon
+    end
+end
+local function stripVariants(name)
+    return name
+        :gsub("^[Ss]hiny%s+[Bb]ig%s+","")
+        :gsub("^[Bb]ig%s+[Ss]hiny%s+","")
+        :gsub("^[Ss]hiny%s+","")
+        :gsub("^[Bb]ig%s+","")
+        :gsub("^[A-Z][A-Z]+%s+","")
+        :gsub("^[A-Z][A-Z]+%s+","")
+end
+local function iconToUrl(icon)
+    if not icon then return nil end
+    local s=tostring(icon)
+    if s:match("^https?://") then return s end
+    local id=s:match("%d+")
+    if id then return "https://square-haze-a007.remediashop.workers.dev/asset/"..id end
+    return nil
+end
+local function GetFishImage(fishName)
+    if not fishName or next(fishImages)==nil then return nil end
+    local base=stripVariants(fishName)
+    local nBase=normalizeStr(base)
+    local nOrig=normalizeStr(fishName)
+    if fishImages[nBase] then return iconToUrl(fishImages[nBase]) end
+    if nOrig~=nBase and fishImages[nOrig] then return iconToUrl(fishImages[nOrig]) end
+    local tLookup=fishImagesTokens[tokenKey(base)]
+    if tLookup then return iconToUrl(tLookup) end
+    if base~=fishName then
+        local tOrig=fishImagesTokens[tokenKey(fishName)]
+        if tOrig then return iconToUrl(tOrig) end
+    end
+    -- longest match
+    local bestMatch,bestLen=nil,0
+    for name,id in pairs(fishImages) do
+        if nBase:find(name,1,true) or name:find(nBase,1,true) then
+            if #name>bestLen then bestLen=#name; bestMatch=id end
+        end
+    end
+    if bestMatch then return iconToUrl(bestMatch) end
+    return nil
+end
+
 task.spawn(function()
-    pcall(function()
-        local itemsFolder = ReplicatedStorage:WaitForChild("Items", 30)
-        if not itemsFolder then return end
-        for _, itemModule in ipairs(itemsFolder:GetDescendants()) do
+    local function scan(container)
+        for _,itemModule in ipairs(container:GetDescendants()) do
             if itemModule:IsA("ModuleScript") then
-                local ok, d = pcall(require, itemModule)
+                local ok,d=pcall(require,itemModule)
                 if ok and type(d)=="table" then
-                    local data = d.Data or d
-                    local name = data and (data.Name or data.ItemName or data.FishName)
-                    local icon = data and (data.Icon or data.Image or data.Thumbnail or data.IconId)
-                    if name and icon and type(name)=="string" then
-                        -- resolve jika Instance
-                        if typeof(icon)=="Instance" then
-                            if icon:IsA("Decal") then icon=icon.Texture
-                            elseif icon:IsA("ImageLabel") or icon:IsA("ImageButton") then icon=icon.Image end
-                        end
-                        fishImageCache[name:lower()]=icon
-                    end
+                    local data=d.Data or d
+                    local name=data and (data.Name or data.ItemName or data.FishName)
+                    local icon=data and resolveIcon(data.Icon or data.Image or data.Thumbnail or data.IconId)
+                    if name and icon then addFishImage(name,icon) end
                 end
             end
         end
-    end)
-end)
-
--- Ambil image URL ikan dari auto-load cache
-local function GetFishImage(fishName)
-    if not fishName then return nil end
-    local autoIcon = fishImageCache[fishName:lower()]
-    if autoIcon then
-        local s = tostring(autoIcon)
-        if s:match("^https?://") then return s end
-        local id = s:match("%d+")
-        if id then return "https://square-haze-a007.remediashop.workers.dev/asset/"..id end
     end
-    return nil
-end
+    local itemsFolder=ReplicatedStorage:FindFirstChild("Items")
+    if itemsFolder then scan(itemsFolder) else scan(ReplicatedStorage) end
+end)
 
 -- Webhook Queue (anti rate-limit)
 local WebhookQueue = {}
