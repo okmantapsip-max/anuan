@@ -358,6 +358,68 @@ if ok0 and itemsMod then
     end
 end
 
+-- Auto-load fish images dari ReplicatedStorage
+local fishImageCache = {}
+task.spawn(function()
+    pcall(function()
+        local itemsFolder = ReplicatedStorage:WaitForChild("Items", 30)
+        if not itemsFolder then return end
+        for _, itemModule in ipairs(itemsFolder:GetDescendants()) do
+            if itemModule:IsA("ModuleScript") then
+                local ok, d = pcall(require, itemModule)
+                if ok and type(d)=="table" then
+                    local data = d.Data or d
+                    local name = data and (data.Name or data.ItemName or data.FishName)
+                    local icon = data and (data.Icon or data.Image or data.Thumbnail or data.IconId)
+                    if name and icon and type(name)=="string" then
+                        -- resolve jika Instance
+                        if typeof(icon)=="Instance" then
+                            if icon:IsA("Decal") then icon=icon.Texture
+                            elseif icon:IsA("ImageLabel") or icon:IsA("ImageButton") then icon=icon.Image end
+                        end
+                        fishImageCache[name:lower()]=icon
+                    end
+                end
+            end
+        end
+    end)
+end)
+
+-- Ambil image URL ikan: prioritas auto-load, fallback ke manual ID
+local function GetFishImage(fishName)
+    if not fishName then return nil end
+    -- cek auto-load cache dulu
+    local autoIcon = fishImageCache[fishName:lower()]
+    if autoIcon then
+        local s = tostring(autoIcon)
+        if s:match("^https?://") then return s end
+        local id = s:match("%d+")
+        if id then return "https://square-haze-a007.remediashop.workers.dev/asset/"..id end
+    end
+    -- fallback ke manual ID dari SecretFishData / ForgottenFishData
+    local manualId = SecretFishData[fishName] or ForgottenFishData[fishName]
+    if manualId then return GetFishImageUrl(manualId) end
+    return nil
+end
+
+-- Webhook Queue (anti rate-limit)
+local WebhookQueue = {}
+local IsProcessingQueue = false
+local function ProcessQueue()
+    if IsProcessingQueue then return end
+    IsProcessingQueue = true
+    task.spawn(function()
+        while #WebhookQueue > 0 do
+            local item = table.remove(WebhookQueue, 1)
+            pcall(function()
+                httpRequest({Url=item.url,Method="POST",Headers={["Content-Type"]="application/json"},Body=HttpService:JSONEncode(item.payload)})
+            end)
+            task.wait(math.random(8,15)/10)
+        end
+        IsProcessingQueue = false
+    end)
+end
+
 local SessionStats = {Secret=0,Ruby=0,Evolved=0,Crystalized=0,CaveCrystal=0,Total=0}
 local UI_Stats = {}
 
@@ -1289,8 +1351,7 @@ local function CheckAndSend(msg)
                 {name="⚖️ Berat",value="`"..data.Weight.."`",inline=true},
                 {name="✨ Mutasi",value="`"..mutDisplay.."`",inline=true},
             }
-            local fishAssetId=ForgottenFishData[data.Item]
-            local fishImgUrl= GetFishImageUrl(fishAssetId) or avatarUrl
+            local fishImgUrl= GetFishImage(data.Item) or avatarUrl
             local embed={
                 title="KELASS KINK CAIR CAIR 💀🔥",
                 color=0xFF00FF,
@@ -1314,8 +1375,7 @@ local function CheckAndSend(msg)
     if isSecret then
         if Settings.SecretEnabled then
             local fields={{name="👤 Player",value="**"..spoiledName.."**",inline=false},{name="🐟 Ikan",value="`"..data.Item.."`",inline=true},{name="⭐ Rarity",value="`SECRET`",inline=true},{name="⚖️ Berat",value="`"..data.Weight.."`",inline=true},{name="✨ Mutasi",value="`"..mutDisplay.."`",inline=true}}
-            local sAssetId=SecretFishData[data.Item]
-            local sImgUrl= GetFishImageUrl(sAssetId) or avatarUrl
+            local sImgUrl= GetFishImage(data.Item) or avatarUrl
             SendWebhookRaw(Current_Webhook,{username="PAN HOOK",content=pingContent,embeds={{title="Alhamdulillah anak soleh dapet secret💦",color=65431,fields=fields,image={url=sImgUrl},thumbnail={url=avatarUrl},footer={text="PAN HOOK v3.0"},timestamp=os.date("!%Y-%m-%dT%H:%M:%SZ")}}},true)
             UpdateStat("Secret")
         end
