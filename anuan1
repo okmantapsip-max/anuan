@@ -342,6 +342,7 @@ local SecretFishData = {
     ["Strawberry Orca"]           = true,
     ["Deepsea Monster Axolotl"]   = true,
     ["Blocky Lochness Monster"]   = true,
+    ["Auderelion"]                = true,
 }
 
 -- Crystalized whitelist
