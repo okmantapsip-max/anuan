@@ -1231,7 +1231,7 @@ local function ParseDataSmart(cleanMsg)
         "Big Shiny","Big Sparkling","Big","Shiny","Sparkling",
         "1x1x1x1","Albino","Arctic Frost","Bloodmoon","Color Burn",
         "Corrupt","Crystalized","Cupid","Disco","Fairy Dust",
-        "Festive","Frozen","Galaxy","Gemstone","Ghost",
+        "Festive","Frozen","Galaxy","Gemstone","Ghost", "Fire", "Binary",
         "Gold","Heartbreaker","Holographic","Leviathan Rage","Lightning",
         "Midnight","Moon Fragment","Noob","Radioactive","Sandy","Stone","Carrot","Pastel",
     }
