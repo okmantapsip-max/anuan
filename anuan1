@@ -1372,6 +1372,25 @@ local function CheckAndSend(msg)
     local cleanMsg=StripTags(msg)
     local lowerMsg=cleanMsg:lower()
 
+    -- Runic Enchant Stone (cek sebelum dedupe)
+    if lowerMsg:find("runic enchant stone") then
+        if Settings.RunicEnabled then
+            local tempMsg=cleanMsg:gsub("^%[Server%]:%s*","")
+            local p=tempMsg:match("^(.*) obtained an?")
+            p=p and p:match("^%s*(.-)%s*$") or "Unknown"
+            local maskedName2=MaskName(p); local spoiledName2=SpoilerWrap(maskedName2)
+            local playerObj2=Players:FindFirstChild(p)
+            local userId2=playerObj2 and playerObj2.UserId or 0
+            local avatarUrl2=GetPlayerAvatar(userId2)
+            local pingContent2=GetDiscordId(p) and "GG! <@"..GetDiscordId(p)..">" or ""
+            local runicImgUrl=GetFishImage("Runic Enchant Stone") or nil
+            local fields={{name="👤 Player",value="**"..spoiledName2.."**",inline=false},{name="🔮 Item",value="`Runic Enchant Stone`",inline=true}}
+            SendWebhookRaw(Current_Webhook,{username="PAN HOOK",content=pingContent2,embeds={{title="🔮 RUNIC ENCHANT STONE!",color=0xFF0000,fields=fields,thumbnail={url=runicImgUrl},footer={text="PAN HOOK v3.0"},timestamp=os.date("!%Y-%m-%dT%H:%M:%SZ")}}})
+            UpdateStat("Total")
+        end
+        return
+    end
+
     -- Dedupe (pakai full pesan biar 2 player beda ga ke-block)
     local dedupeKey=cleanMsg
     if recentMessages[dedupeKey] then return end
@@ -1408,23 +1427,6 @@ local function CheckAndSend(msg)
         local eggyImgUrl=GetFishImage("Eggy Enchant Stone") or nil
         local fields={{name="👤 Player",value="**"..spoiledName.."**",inline=false},{name="🥚 Item",value="`Eggy Enchant Stone`",inline=true}}
         SendWebhookRaw(Current_Webhook,{username="PAN HOOK",content=pingContent,embeds={{title="🥚 EGGY ENCHANT STONE!",color=0xFF0000,fields=fields,thumbnail={url=eggyImgUrl},footer={text="PAN HOOK v3.0"},timestamp=os.date("!%Y-%m-%dT%H:%M:%SZ")}}})
-        UpdateStat("Total"); return
-    end
-
-    -- Runic Enchant Stone
-    if lowerMsg:find("runic enchant stone") then
-        if not Settings.RunicEnabled then return end
-        local tempMsg=cleanMsg:gsub("^%[Server%]:%s*","")
-        local p=tempMsg:match("^(.*) obtained an?")
-        p=p and p:match("^%s*(.-)%s*$") or "Unknown"
-        local maskedName=MaskName(p); local spoiledName=SpoilerWrap(maskedName)
-        local playerObj=Players:FindFirstChild(p)
-        local userId=playerObj and playerObj.UserId or 0
-        local avatarUrl=GetPlayerAvatar(userId)
-        local pingContent=GetDiscordId(p) and "GG! <@"..GetDiscordId(p)..">" or ""
-        local runicImgUrl=GetFishImage("Runic Enchant Stone") or nil
-        local fields={{name="👤 Player",value="**"..spoiledName.."**",inline=false},{name="🔮 Item",value="`Runic Enchant Stone`",inline=true}}
-        SendWebhookRaw(Current_Webhook,{username="PAN HOOK",content=pingContent,embeds={{title="🔮 RUNIC ENCHANT STONE!",color=0xFF0000,fields=fields,thumbnail={url=runicImgUrl},footer={text="PAN HOOK v3.0"},timestamp=os.date("!%Y-%m-%dT%H:%M:%SZ")}}})
         UpdateStat("Total"); return
     end
 
