@@ -249,6 +249,7 @@ local Settings = {
     RubyEnabled       = false,
     EvolvedEnabled    = false,
     EggyEnabled       = false,
+    RunicEnabled      = false,
     CrystalizedEnabled= false,
     CaveCrystalEnabled= false,
     EpicEnabled       = false,
@@ -278,7 +279,6 @@ local ForgottenFishData = {
     ["Sea Eater"]    = true,
     ["Thunderzilla"] = true,
     ["Iridesca"]     = true,
-    ["Frostbite Leviathan"] = true,
 }
 
 local SecretFishData = {
@@ -341,9 +341,6 @@ local SecretFishData = {
     ["Bonemaw Tyrant"]            = true,
     ["Strawberry Orca"]           = true,
     ["Deepsea Monster Axolotl"]   = true,
-    ["Blocky Lochness Monster"]   = true,
-    ["Aurelion"]                  = true,
-    ["Disco Frogalloon"]          = true,
 }
 
 -- Crystalized whitelist
@@ -407,13 +404,38 @@ local function stripVariants(name)
         :gsub("^[A-Z][A-Z]+%s+","")
         :gsub("^[A-Z][A-Z]+%s+","")
 end
+local thumbnailCache = {}
+local function fetchThumbnailUrl(assetId)
+    local id = tostring(assetId or ""):match("%d+")
+    if not id then return nil end
+    if thumbnailCache[id] ~= nil then return thumbnailCache[id] or nil end
+    local ok, res = pcall(function()
+        return httpRequest({
+            Url = "https://thumbnails.roblox.com/v1/assets?assetIds="..id.."&size=420x420&format=Png&isCircular=false",
+            Method = "GET",
+            Headers = {["User-Agent"]="Roblox/1.0.0"}
+        })
+    end)
+    local body = ok and res and (res.Body or res.body) or nil
+    if body then
+        local dok, decoded = pcall(function() return HttpService:JSONDecode(body) end)
+        local url = dok and decoded and decoded.data and decoded.data[1] and decoded.data[1].imageUrl or nil
+        if url and url ~= "" then thumbnailCache[id]=url; return url end
+    end
+    thumbnailCache[id]=false; return nil
+end
+
 local function iconToUrl(icon)
     if not icon then return nil end
     local s=tostring(icon)
     if s:match("^https?://") then return s end
     local id=s:match("%d+")
-    if id then return "https://square-haze-a007.remediashop.workers.dev/asset/"..id end
-    return nil
+    if not id then return nil end
+    -- Coba proxy dulu
+    local proxyUrl = "https://square-haze-a007.remediashop.workers.dev/asset/"..id
+    -- Fallback thumbnail API
+    local thumbUrl = fetchThumbnailUrl(id)
+    return thumbUrl or proxyUrl
 end
 local function GetFishImage(fishName)
     if not fishName or next(fishImages)==nil then return nil end
@@ -439,6 +461,24 @@ local function GetFishImage(fishName)
     return nil
 end
 
+local function isFishData(data, moduleRef)
+    if not data then return false end
+    local function lstr(v)
+        if type(v)=="string" then return v:lower() end
+        if type(v)=="table" then
+            if type(v.Name)=="string" then return v.Name:lower() end
+            if type(v.Type)=="string" then return v.Type:lower() end
+        end
+        return tostring(v):lower()
+    end
+    local typeStr = lstr(data.Type or data.Category or data.ItemType or "")
+    if typeStr:find("fish") then return true end
+    if data.IsFish==true or data.Fish==true then return true end
+    if data.Rarity or data.Weight or data.CatchChance or data.Chance then return true end
+    if moduleRef and type(moduleRef.Name)=="string" and moduleRef.Name:lower():find("fish") then return true end
+    return false
+end
+
 task.spawn(function()
     local function scan(container)
         for _,itemModule in ipairs(container:GetDescendants()) do
@@ -448,7 +488,9 @@ task.spawn(function()
                     local data=d.Data or d
                     local name=data and (data.Name or data.ItemName or data.FishName)
                     local icon=data and resolveIcon(data.Icon or data.Image or data.Thumbnail or data.IconId)
-                    if name and icon then addFishImage(name,icon) end
+                    if name and icon and isFishData(data, itemModule) then
+                        addFishImage(name,icon)
+                    end
                 end
             end
         end
@@ -473,6 +515,20 @@ local function ProcessQueue()
         end
         IsProcessingQueue = false
     end)
+end
+
+-- RGB Rarity Detection (seperti CIA Logger)
+local RGB_RARITY = {
+    ["179,115,248"] = "Epic",
+    ["255,185,43"]  = "Legendary",
+    ["255,25,25"]   = "Mythic",
+    ["24,255,152"]  = "Secret",
+    ["255,255,255"] = "Forgotten",
+}
+local function DetectRarityFromRGB(text)
+    local r,g,b = text:match("rgb%((%d+),%s*(%d+),%s*(%d+)%)")
+    if r then return RGB_RARITY[r..","..g..","..b] end
+    return nil
 end
 
 local SessionStats = {Secret=0,Ruby=0,Evolved=0,Crystalized=0,CaveCrystal=0,Total=0}
@@ -859,6 +915,7 @@ CreateToggle(Page_Webhook,"👋 Player Join & Leave","LogEnabled",false,function
 CreateSectionLabel(Page_Webhook,"  SPECIAL")
 CreateToggle(Page_Webhook,"💎 Ruby + Gemstone","RubyEnabled",false,nil)
 CreateToggle(Page_Webhook,"🥚 Eggy Enchant Stone","EggyEnabled",false,nil)
+CreateToggle(Page_Webhook,"🔮 Runic Enchant Stone","RunicEnabled",false,nil)
 CreateToggle(Page_Webhook,"✨ Secret Fish","SecretEnabled",true,nil)
 CreateToggle(Page_Webhook,"👁️ Forgotten","ForgottenEnabled",true,nil)
 CreateToggle(Page_Webhook,"🧬 Mutation Crystalized","CrystalizedEnabled",false,nil)
@@ -1232,7 +1289,7 @@ local function ParseDataSmart(cleanMsg)
         "Big Shiny","Big Sparkling","Big","Shiny","Sparkling",
         "1x1x1x1","Albino","Arctic Frost","Bloodmoon","Color Burn",
         "Corrupt","Crystalized","Cupid","Disco","Fairy Dust",
-        "Festive","Frozen","Galaxy","Gemstone","Ghost", "Fire", "Binary",
+        "Festive","Frozen","Galaxy","Gemstone","Ghost",
         "Gold","Heartbreaker","Holographic","Leviathan Rage","Lightning",
         "Midnight","Moon Fragment","Noob","Radioactive","Sandy","Stone","Carrot","Pastel",
     }
@@ -1354,6 +1411,23 @@ local function CheckAndSend(msg)
         UpdateStat("Total"); return
     end
 
+    -- Runic Enchant Stone
+    if lowerMsg:find("runic enchant stone") then
+        if not Settings.RunicEnabled then return end
+        local tempMsg=cleanMsg:gsub("^%[Server%]:%s*","")
+        local p=tempMsg:match("^(.*) obtained an?")
+        p=p and p:match("^%s*(.-)%s*$") or "Unknown"
+        local maskedName=MaskName(p); local spoiledName=SpoilerWrap(maskedName)
+        local playerObj=Players:FindFirstChild(p)
+        local userId=playerObj and playerObj.UserId or 0
+        local avatarUrl=GetPlayerAvatar(userId)
+        local pingContent=GetDiscordId(p) and "GG! <@"..GetDiscordId(p)..">" or ""
+        local runicImgUrl=GetFishImage("Runic Enchant Stone") or nil
+        local fields={{name="👤 Player",value="**"..spoiledName.."**",inline=false},{name="🔮 Item",value="`Runic Enchant Stone`",inline=true}}
+        SendWebhookRaw(Current_Webhook,{username="PAN HOOK",content=pingContent,embeds={{title="🔮 RUNIC ENCHANT STONE!",color=0xFF0000,fields=fields,thumbnail={url=runicImgUrl},footer={text="PAN HOOK v3.0"},timestamp=os.date("!%Y-%m-%dT%H:%M:%SZ")}}})
+        UpdateStat("Total"); return
+    end
+
     -- Crystalized
     if lowerMsg:find("crystalized") then
         if not Settings.CrystalizedEnabled then return end
@@ -1444,21 +1518,17 @@ local function CheckAndSend(msg)
         UpdateStat("Ruby"); return
     end
 
-    -- Rarity Epic/Legendary/Mythic (dari chance di pesan)
-    local numStr, suffix = cleanMsg:match("1 in ([%d%.]+)([KkMm]?)%s*chance")
-    if numStr then
-        local base = tonumber(numStr) or 0
-        local num = base
-        if suffix=="K" or suffix=="k" then num=base*1000
-        elseif suffix=="M" or suffix=="m" then num=base*1000000 end
-        local tier=nil
-        if num>=50000 then tier=6       -- Mythic (50K+)
-        elseif num>=10000 then tier=5   -- Legendary (10K+)
-        elseif num>=1000 then tier=4 end -- Epic (1K+)
-        if tier and chatTierKeys[tier] and Settings[chatTierKeys[tier]] then
-            local info=rarityInfo[tier]
-            local fields={{name="👤 Player",value="**"..maskedName.."**",inline=false},{name="🐟 Ikan",value="`"..data.Item.."`",inline=true},{name="⭐ Rarity",value="`"..info.name.."`",inline=true},{name="⚖️ Berat",value="`"..data.Weight.."`",inline=true},{name="✨ Mutasi",value="`"..mutDisplay.."`",inline=true}}
-            local payload={username="PAN HOOK",embeds={{title="**DAPATNYA AMPAS DEK, MENDING GALER AJA**",color=info.color,fields=fields,thumbnail={url=avatarUrl},footer={text="PAN HOOK v3.0"},timestamp=os.date("!%Y-%m-%dT%H:%M:%SZ")}}}
+    -- Rarity dari RGB warna chat (Epic/Legendary/Mythic)
+    local detectedRarity = DetectRarityFromRGB(msg)
+    if detectedRarity then
+        local rarityKey = detectedRarity
+        local settingMap = {Epic="EpicEnabled", Legendary="LegendaryEnabled", Mythic="MythicEnabled"}
+        local colorMap = {Epic=0xB24BF3, Legendary=0xFFD700, Mythic=0xFF4444}
+        local settingKey = settingMap[rarityKey]
+        if settingKey and Settings[settingKey] then
+            local fields={{name="👤 Player",value="**"..maskedName.."**",inline=false},{name="🐟 Ikan",value="`"..data.Item.."`",inline=true},{name="⭐ Rarity",value="`"..rarityKey.."`",inline=true},{name="⚖️ Berat",value="`"..data.Weight.."`",inline=true},{name="✨ Mutasi",value="`"..mutDisplay.."`",inline=true}}
+            local fishImg = GetFishImage(data.Item)
+            local payload={username="PAN HOOK",embeds={{title="**DAPATNYA AMPAS DEK, MENDING GALER AJA**",color=colorMap[rarityKey] or 0xFFFFFF,fields=fields,thumbnail={url=fishImg or avatarUrl},footer={text="PAN HOOK v3.0"},timestamp=os.date("!%Y-%m-%dT%H:%M:%SZ")}}}
             SendWebhookRaw(Current_Webhook,payload)
         end
     end
